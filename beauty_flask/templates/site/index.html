@@ -1,0 +1,99 @@
+{% extends 'site.html' %}
+
+{% block title %}Home{% endblock %}
+
+<!-- 
+content_header, flashed messages, and content are in 
+<main class="container-fluid mt-4"> 
+-->
+
+<!--
+{% block content_header %}
+{% endblock %}
+-->
+
+{% block content %}
+<div id="makeupCarousel" class="carousel slide carousel-dark container" data-bs-ride="carousel">
+  <div class="carousel-inner">
+    <div class="carousel-item active" data-bs-interval="6000" data-bs-pause-"hover">
+      <img src="{{ url_for('static', filename="images/makeup0.jpg") }}" class="d-block w-100" alt="makeup">
+      <div class="carousel-caption caption0">
+        <h1>Customized beauty looks for any occasion.</h1>
+      </div>
+
+    </div>
+    <div class="carousel-item" data-bs-interval="6000" data-bs-pause="hover">
+      <img src="{{ url_for('static', filename="images/makeup1.jpg") }}" class="d-block w-100" alt="makeup">
+      <div class="carousel-caption caption1">
+        <h1>Only the highest quality products.</h1>
+      </div>
+
+    </div>
+  </div>
+  <button class="carousel-control-prev" type="button" data-bs-target="#makeupCarousel" data-bs-slide="prev">
+    <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Previous</span>
+  </button>
+  <button class="carousel-control-next" type="button" data-bs-target="#makeupCarousel" data-bs-slide="next">
+    <span class="carousel-control-next-icon" aria-hidden="true"></span>
+    <span class="visually-hidden">Next</span>
+  </button>
+
+  <div class="carousel-indicators">
+    <button type="button" data-bs-target="makeupCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Image 1"></button>
+    <button type="button" data-bs-target="makeupCarousel" data-bs-slide-to="1" aria-label="Image 2"></button>
+  </div>
+</div>
+
+<div class="container-fluid text-center my-3 py-3">
+<img style="width:90%; max-height:85px; opacity:0.6;" src="{{ url_for('static', filename="images/scroll-pngtree-gold4.png") }}" alt="border png from pngtree.com">
+</div>
+
+<div class="container">
+<div class="my-3 row">
+  <div class="col-md">
+    <div class="card text-center bg-light">
+      <img src="{{ url_for('static', filename="images/looks0.jpg") }}" class="card-img-top" alt="beauty looks">
+      <div class="card-body">
+        <h3 class="card-title">Daytime Looks</h3>
+        <p class="card-text">Highlight your natural beauty with a subtle look.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md">
+    <div class="card text-center bg-light">
+      <img src="{{ url_for('static', filename="images/looks1.jpg") }}" class="card-img-top" alt="beauty looks">
+      <div class="card-body">
+        <h3 class="card-title">Special Occasions</h3>
+        <p class="card-text">Gorgeous looks for any photographed event.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md">
+    <div class="card text-center bg-light">
+      <img src="{{ url_for('static', filename="images/looks2.jpg") }}" class="card-img-top" alt="beauty looks">
+      <div class="card-body">
+        <h3 class="card-title">Nighttime Looks</h3>
+        <p class="card-text">Get ready for your night out with a sultry palette.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="container-fluid text-center my-3 py-3">
+<img style="width:90%; max-height:85px; opacity:0.6;" src="{{ url_for('static', filename="images/scroll-pngtree-gold4.png") }}" alt="border png from pngtree.com">
+</div>
+
+<div class="container-fluid my-3 text-center">
+  <h1>About Me</h1>
+  <p>My name is Stephanie Riley. I live outside St. Louis, Missouri with my family. I've been pursuing my love of makeup artistry for a few years now and am excited to give you a gorgeous look for whatever occasion!</p>
+  <div class="portraitWall row justify-content-around">
+    <img class="col-md-7 col-lg-4" style="border:8px solid #D8BC70; border-radius:50%; box-shadow:0px 0px 8px #A28D54;" src="{{ url_for('static', filename="images/steph4.jpg") }}">
+    <img class="col-md-4 col-lg-3" style="border:5px ridge grey; box-shadow:5px 5px 5px grey;" src="{{ url_for('static', filename="images/steph2.jpg") }}">
+    <img class="col-md-4 col-lg-4" style="border:10px ridge white; box-shadow:5px 5px 10px grey;" src="{{ url_for('static', filename="images/steph3.jpg") }}">
+    <img class="col-md-7 col-lg-5" style="border:12px ridge #877646; border-radius:75%;" src="{{ url_for('static', filename="images/steph0.jpg") }}">
+    <img class="col-md-6 col-lg-5" style="border:8px solid grey; box-shadow:10px 10px 25px grey;" src="{{ url_for('static', filename="images/steph5.jpg") }}">
+  </div>
+</div>
+{% endblock %}

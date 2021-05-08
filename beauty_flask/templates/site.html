@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block navbar %}
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarCollapse">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link {% if self.title() == 'Home' %}active{% endif %}" href="{{ url_for('site.index') }}">Home</a></li>
+        <li class="nav-item"><a class="nav-link {% if self.title() == 'Booking' %}active{% endif %}" href="{{ url_for('site.book') }}">Book a Session</a></li>
+        <li class="nav-item"><a class="nav-link {% if self.title() == 'Payment' %}active{% endif %}" href="{{ url_for('site.pay') }}">Payment Portal</a></li>
+      </ul>
+    </div>
+
+{% endblock %}

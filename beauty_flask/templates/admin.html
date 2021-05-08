@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block navbar %}
+    {% if self.title() == 'Log In' %}
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('site.index') }}">Main Site</a></li>
+    </ul>
+
+    {% elif self.title() == 'Dashboard' %}
+    <ul class="navbar-nav ms-auto d-flex justify-content-end align-items-center">
+        <li class="nav-item signedin"><span>Signed in as {{ g.user['username'] }}</span></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.logout') }}">Log Out</a></li>
+    </ul>
+
+    {% elif self.title() == 'Logout' %}
+    <ul class="navbar-nav ms-auto">
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('site.index') }}">Main Site</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('admin.login') }}">Log In</a></li>
+    </ul>
+    {% endif %}
+
+{% endblock %}

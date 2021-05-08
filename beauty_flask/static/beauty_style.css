@@ -1,0 +1,111 @@
+/*
+@media (min-width: 576px)  { /* @include media-breakpoint-up(sm) 
+@media (min-width: 768px)  { /* @include media-breakpoint-up(md) 
+@media (min-width: 992px)  { /* @include media-breakpoint-up(lg) 
+@media (min-width: 1200px) { /* @include media-breakpoint-up(xl) 
+@media (min-width: 1400px) { /* @include media-breakpoint-up(xxl)
+*/
+
+body {
+    background-color: mistyrose;
+    background: radial-gradient(white, #FFFCFB, #FFF6F5, mistyrose, #EFD7D5, #BFB2B0);
+    background-repeat: no-repeat; /* don't tile */
+    background-attachment:fixed; /* don't move when content's height is greater than background's height */
+    background-size:cover; /* cover full height and width */
+    font-family: 'Sorts Mill Goudy', serif;
+}
+
+p {
+    font-size:125%;
+}
+
+/* Custom Carousel Captions per Window Size */
+
+@media (min-width: 768px) { /* media-breakpoint-up(md) */
+.caption0 {
+    text-align:left;
+    transform:translateY(-50%); /* move the caption up 50% in parent element */
+    top:50%; /* create buffer at top to move text down */
+    right:60%; /* increase right-hand buffer so text wraps */
+    left:10%; /* override bootstrap default 15% */
+}}
+
+/* xs through sm */
+.caption0 > h1 {
+    font-size:2em;
+}
+
+@media (min-width: 992px) { /* media-breakpoint-up(lg) */
+.caption0 > h1 {
+    font-size:3em;
+}}
+
+@media (min-width: 768px) { /* media-breakpoint-up(md) */
+.caption1 {
+    text-align:right;
+    transform:translateY(-2%);
+    top:0;
+    right:1%;
+}}
+
+@media (min-width: 768px) { /* media-breakpoint-up(md) */
+.caption1 > h1 {
+    font-size:2.2em;
+}}
+
+.carousel-item {
+    max-height: 729px; /* bound all carousel items to same max-height */
+}
+
+.carousel-control-prev {
+    width:10%; /* override bootstrap default 15%, moves further towards outside of carousel */
+}
+
+.carousel-control-next {
+    width:10%; /* override bootstrap default 15%, moves further towards outside of carousel */
+}
+
+.card {
+    margin-bottom:20px;
+    border-radius: 0 0 15px 15px;
+    box-shadow: 5px 5px 15px grey;
+}
+
+.portraitWall {
+    padding-top:15px;
+}
+
+.portraitWall img {
+    padding: 0;
+    object-fit: cover; /* crop, don't scale */
+    margin-bottom:30px;
+    border:15px #D8BC70;
+    max-width:90%;
+}
+
+.navbar-brand {
+    font-weight:bold;
+    font-size:150%;
+}
+
+.navbar {
+    font-size:150%;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    text-align: center;
+}
+
+.copyright {
+    color:#8F8584;
+    font-size:100%;
+    font-style:italic;
+}
+
+.signedin {
+    color:rgba(0,0,0,.55);
+    margin-right:10px;
+    font-size:75%;
+}
