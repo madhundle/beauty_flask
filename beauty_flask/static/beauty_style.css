@@ -19,6 +19,13 @@ p {
     font-size:125%;
 }
 
+a {
+    color: #484342;
+}
+a:hover {
+    color: #A79C9A;
+}
+
 /* Custom Carousel Captions per Window Size */
 
 @media (min-width: 768px) { /* media-breakpoint-up(md) */
@@ -108,4 +115,66 @@ p {
     color:rgba(0,0,0,.55);
     margin-right:10px;
     font-size:75%;
+}
+
+.table tr > * {
+    vertical-align:middle;
+}
+
+.table th {
+    vertical-align:middle;
+}
+
+.table td {
+}
+
+.availButton {
+    background-color:transparent;
+    width:100%;
+    border:1px solid grey;
+    border-radius:5px;
+}
+
+.bg-success {
+    background-color:#1ABB71!important;
+}
+
+td.schedButtonCol {
+    background: rgba( 248, 249, 250, 0.3);
+    color: #484342;
+    padding:0;
+    white-space: nowrap;
+    width: 32px;
+}
+
+td.schedButtonCol:hover {
+    background: rgba( 248, 249, 250, 0.4);
+    color: #928987;
+    cursor: pointer;
+}
+
+td.disabled {
+    pointer-events:none;
+}
+
+.schedButton {
+    display:inline-block;
+}
+
+.schedButton button {
+    background: inherit;
+    color: inherit;
+    padding: 0;
+    border: none;
+}
+
+.bi {
+    font-size:2em;
+}
+
+.bookButton {
+    background-color:transparent;
+    width:100%;
+    border:1px solid grey;
+    border-radius:5px;
 }

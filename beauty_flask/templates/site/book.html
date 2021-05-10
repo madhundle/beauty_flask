@@ -2,15 +2,81 @@
 
 {% block title %}Booking{% endblock %}
 
+<!-- 
+content_header, flashed messages, and content are in 
+<main class="container-fluid mt-4"> 
+-->
+
 {% block content_header %}
-<div class="container-fluid">
-    <h1>Booking</h1>
-</div>
+{% if g.error is sameas true %}
+    <p>Sorry, there was an error while getting the available sessions.</p>
+    <p>Please <a href="{{ url_for('site.contact') }}">contact me</a> to book a session or try again soon.</p>
+    <p>Thank you!</p>
+{% endif %}
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
-    <p>My booking content</p>
+{% if g.error is sameas false %}
+<div class="container-fluid text-center">
+    <h1>Available Sessions</h1>
 </div>
-{% endblock %}
+<span>All times displayed are in {{ timezone }}.</span>
+<div class="container-fluid mt-2 mb-4 text-center">
+<form method="POST">
+  <table class="table table-light">
+    {# Header row with prev icon, month days, and next icons #}
+    <tr>
+      {% if session.offset is gt 0 %}
+      <td id="prevCol" class="schedButtonCol" rowspan="{{ timeblocks|length +2 }}" onclick="clickButton('prev')">
+        <div class="schedButton">
+          <button id="prevButton" type="submit" name="prev" value="True">
+            <i class="bi bi-caret-left-fill"></i>
+          </button>
+        </div>
+      {% else %}
+      <td class="schedButtonCol disabled" rowspan="{{ timeblocks|length +2 }}"></td>
+      {% endif %}
+      </td>
+      {% for d in days %}<th>{{ week[d][0] }} {{ week[d][1] }}</th>{% endfor %}
+      <td id="nextCol" class="schedButtonCol" rowspan="{{ timeblocks|length +2 }}" onclick="clickButton('next')">
+        <div class="schedButton">
+          <button id="nextButton" type="submit" name="next" value="True">
+            <i class="bi bi-caret-right-fill"></i>
+          </button>
+        </div>
+      </td>
+    </tr>
+    {# Header row with weekdays #}
+    <tr style="border-bottom: 1px solid black;">{% for d in days %}<th>{{ d }}</th>{% endfor %}</tr>
+    {# Table body of openings #}
+    {% for tb in timeblocks %}
+      <tr>  
+      {% for d in days %}
+        {% if tb in openings[d] %}
+          <td>
+            <button type="submit" class="bookButton" name="booking" value="{{ d ~ "_" ~ tb }}">{{ tb }}</button>
+          </td>
+        {% else %}
+          <td></td>
+        {% endif %}
+      {% endfor %}
+      </tr>
+    {% endfor %}
+  </table>
+</div>
 
+<script type="text/javascript">
+  /* Associate clicking anywhere in the column with the prev or next button */
+  function clickButton(btn) {
+    document.getElementById(btn+"Button").click();
+  }
+/*  document.getElementById("prevCol").onclick = function() {
+      document.getElementById("prevButton").click();
+  }
+  document.getElementById("nextCol").onclick = function() {
+      document.getElementById("nextButton").click();
+  }*/
+</script>
+
+{% endif %}
+{% endblock %}

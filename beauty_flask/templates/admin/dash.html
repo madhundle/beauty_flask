@@ -1,12 +1,93 @@
 {% extends 'admin.html' %}
 
 {% block title %}Dashboard{% endblock %}
+
+<!-- 
+content_header, flashed messages, and content are in 
+<main class="container-fluid mt-4"> 
+-->
+
 {% block content_header %}
-  <h1>Dashboard</h1>
+<div class="text-center"><h1>Dashboard</h1></div>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid mt-4">
+<div class="container-fluid mt-4 text-center">
+<h2>Basic Availability</h2>
+
+{% if not edit %}
+<table class="table table-light">
+  <thead><tr><th></th>{% for d in days %}<th>{{ d }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for t in timeblocks %}
+    <tr><th>{{ t }}</th>
+      {% for d in days %}
+        {% if avail[d][t] %}
+          <td class="bg-success">Open</td>
+        {% else %}
+          <td>&mdash;&mdash;&mdash;</td>
+        {% endif %}
+      {% endfor %}
+    </tr>
+    {% endfor %}
+ </tbody> 
+</table>
+<form method="POST"><label for="Edit"></label><input type="submit" value="Edit" name="Edit"></form>
 </div>
+
+{% elif edit %}
+<form method="POST" id="availForm">
+<table class="table table-light">
+  <thead><tr><th></th>{% for d in days %}<th>{{ d }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for t in timeblocks %}
+    <tr><th>{{ t }}</th>
+      {% for d in days %}
+        <td>
+        {% if avail[d][t] %}
+          <button type="button" id="{{ d ~ "_" ~ t }}" class="availButton bg-success"><input type="hidden" name="{{ d ~ "_" ~ t }}" value="True">Open</button>
+        {% else %}
+          <button type="button" id="{{ d ~ "_" ~ t }}" class="availButton bg-light"><input type="hidden" name="{{ d ~ "_" ~ t }}" value="False">&mdash;&mdash;&mdash;</button>
+        {% endif %}
+        </td>
+      {% endfor %}
+    </tr>
+    {% endfor %}
+ </tbody> 
+</table>
+<label for="Edit"><input type="submit" value="Save" name="Edit"></label></form>
+</div>
+
+<!--
+          <input type="button" form="availForm" id="{{ d ~ "_" ~ t }}" name="{{ d ~ "_" ~ t }}" class="availButton bg-success" value="Open">
+          <input type="button" form="availForm" id="{{ d ~ "_" ~ t }}" name="{{ d ~ "_" ~ t }}" class="availButton bg-light" value="&mdash;&mdash;&mdash;">
+-->
+
+<script type="text/javascript">
+{% macro toggle(id) -%}
+    var block_{{ id }} = document.getElementById("{{ id }}");
+    block_{{ id }}.onclick = function() {
+        if (block_{{ id }}.children[0].value == 'True') {
+            block_{{ id }}.children[0].value = 'False';
+            block_{{ id }}.innerHTML = block_{{ id }}.innerHTML.replace('Open','&mdash;&mdash;&mdash;');
+            block_{{ id }}.classList.remove('bg-success');
+            block_{{ id }}.classList.add('bg-light');
+        } else {
+            block_{{ id }}.children[0].value = 'True';
+            block_{{ id }}.innerHTML = block_{{ id }}.innerHTML.replace('\u2014\u2014\u2014','Open');
+            block_{{ id }}.classList.remove('bg-light');
+            block_{{ id }}.classList.add('bg-success');
+        }
+    }
+{%- endmacro %}
+{% for d in days %}
+  {% for t in timeblocks %}
+    {{ toggle(d ~ "_" ~ t) }}
+  {% endfor %}
+{% endfor %}
+</script>
+
+{% endif %}
+
 {% endblock %}
 

@@ -9,6 +9,7 @@
         <li class="nav-item"><a class="nav-link {% if self.title() == 'Home' %}active{% endif %}" href="{{ url_for('site.index') }}">Home</a></li>
         <li class="nav-item"><a class="nav-link {% if self.title() == 'Booking' %}active{% endif %}" href="{{ url_for('site.book') }}">Book a Session</a></li>
         <li class="nav-item"><a class="nav-link {% if self.title() == 'Payment' %}active{% endif %}" href="{{ url_for('site.pay') }}">Payment Portal</a></li>
+        <li class="nav-item"><a class="nav-link {% if self.title() == 'Contact' %}active{% endif %}" href="{{ url_for('site.contact') }}">Contact Me</a></li>
       </ul>
     </div>
 
