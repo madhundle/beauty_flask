@@ -1,6 +1,7 @@
 import os
 
 from flask import Flask
+from flask.ext.cache import Cache
 
 def create_app(test_config=None):
     """
@@ -39,6 +40,9 @@ def create_app(test_config=None):
     app.register_blueprint(site.bp)
     # the 'site' blueprint does not have a url_prefix, so the 'index' view is at '/'
     app.add_url_rule('/', endpoint='index')
+
+    # set up caching
+    cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
     return app
 

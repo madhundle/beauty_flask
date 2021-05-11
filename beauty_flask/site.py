@@ -5,12 +5,13 @@ from flask import (
 import os.path
 from dateutil import tz
 from datetime import datetime, timedelta
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-
 import json
+
+from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+
+from flask_caching import Cache
 
 # Constants needed for calculating datetimes
 DAYS = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
@@ -24,43 +25,21 @@ bp = Blueprint('site', __name__)
 def index():
     return render_template('site/index.html')
 
+
 def connectToCalendar():
     """
-    Connect to Google Calendar; returns the connection Resource service
+    Connect to Google Calendar via the service account
+    Returns the connection Resource service
     """
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    # 
-    # If I modify these scopes used, delete the instance file token.json; this
-    # will force it to be recreated with the new scopes.
-    # 
-    SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-
-    creds = None
-    if os.path.exists('/instance/token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-
-    # If there are no (valid) credentials available, user must log in
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(
-                'instance/credentials.json', SCOPES)
-            creds = flow.run_local_server(port=8088)
-        # Save the credentials for the next run
-        with open('instance/token.json', 'w') as token:
-            token.write(creds.to_json())
-
+    SCOPES = ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar.events']
+    SVC_ACCT_FILE = 'instance/beauty-svc-acct.json'
+    if os.path.exists(SVC_ACCT_FILE):
+        creds = service_account.Credentials.from_service_account_file(SVC_ACCT_FILE, scopes = SCOPES)
     return build('calendar', 'v3', credentials=creds)
-
+    
 
 def getCalendarTimezone(service):
     cal = service.calendars().get(calendarId='onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com').execute()
-#    flash("ID: " + cal['id'])
-#    flash("Summary: " + cal['summary'])
-#    flash("timeZone: " + cal['timeZone'])
     return cal['timeZone']
 
 
@@ -76,7 +55,6 @@ def getEventsForWeek(service, start):
                                           orderBy='startTime', singleEvents=True, 
                                           timeMin=start.isoformat(), timeMax=end.isoformat()).execute()
 
-#    [(e['summary'], e['start']['dateTime'], e['end']['dateTime']) for e in events_result['items']]
     return [(e['start']['dateTime'],e['end']['dateTime']) for e in events_result['items']]
 
 def getOpeningsForWeek(service):
@@ -93,7 +71,7 @@ def getOpeningsForWeek(service):
 
     now = datetime.now(tzInfo) 
     if session.get('offset') is None:
-        flash("Error: Offset not available in getOpeningsForWeek")
+        flash("Unexpected error while trying to get available sessions")
     if session['offset'] == 0: # this week
         baseDateTime = now
     else: # a future week
