@@ -33,6 +33,7 @@ def close_db(e=None):
         db.close()
     return
 
+
 def init_db():
     """
     Initialize the SQL database
@@ -42,6 +43,7 @@ def init_db():
     with current_app.open_resource('schema.sql') as f:
         db.executescript(f.read().decode('utf8'))
     return
+
 
 # define a command line command 'init-db' to call this function and show success message to user
 @click.command('init-db') 
@@ -54,6 +56,7 @@ def init_db_command():
     init_db()
     click.echo('Initialized the database.')
     return
+
 
 def init_app(app):
     """

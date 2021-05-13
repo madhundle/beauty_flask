@@ -1,7 +1,10 @@
 import os
 
 from flask import Flask
-from flask.ext.cache import Cache
+
+# Extension defined in separate file for use with application factory function
+#from .cache import cache
+
 
 def create_app(test_config=None):
     """
@@ -38,11 +41,18 @@ def create_app(test_config=None):
     # import base site functionality
     from . import site
     app.register_blueprint(site.bp)
-    # the 'site' blueprint does not have a url_prefix, so the 'index' view is at '/'
+    # the 'site' blueprint does not have a url_prefix and the 'index' view routes just '/'
+    # so explicitly create this url rule so 'index' works as an endpoint name as well as 'site.index'
+    # (i.e. url_for('index') and url_for('site.index') will now both work)
     app.add_url_rule('/', endpoint='index')
 
-    # set up caching
-    cache = Cache(app,config={'CACHE_TYPE': 'simple'})
+    # Extensions
+    # import cache functionality
+    from .cache import cache
+#    app.config.from_mapping(CACHE_TYPE='SimpleCache')
+    cache.init_app(app)
+#    cache.cache_type = app.config['CACHE_TYPE']
+
 
     return app
 

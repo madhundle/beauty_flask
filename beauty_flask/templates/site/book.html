@@ -20,10 +20,11 @@ content_header, flashed messages, and content are in
 <div class="container-fluid text-center">
     <h1>Available Sessions</h1>
 </div>
+
+<div id="sessions" class="container-fluid mt-2 mb-4">
 <span>All times displayed are in {{ timezone }}.</span>
-<div class="container-fluid mt-2 mb-4 text-center">
 <form method="POST">
-  <table class="table table-light">
+  <table class="table table-light text-center">
     {# Header row with prev icon, month days, and next icons #}
     <tr>
       {% if session.offset is gt 0 %}

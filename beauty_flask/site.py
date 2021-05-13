@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, render_template, g, session, request
+    Blueprint, flash, render_template, g, session, request, current_app
 )
 
 import os.path
@@ -11,7 +11,7 @@ from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
-from flask_caching import Cache
+from .cache import cache
 
 # Constants needed for calculating datetimes
 DAYS = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
@@ -137,13 +137,16 @@ def getOpeningsForWeek(service):
 @bp.route('/book', methods=('GET', 'POST'))
 def book():
     # Connect to calendar or fail gracefully (directing user to Contact Me page)
-    try:
-        service = connectToCalendar()
-        g.error = False
-    except Exception as e:
-        g.error = True
-        flash(e)
-        return render_template('site/book.html')
+    service = cache.get("service") 
+    if service is None: # service hasn't been added to cache or expired
+        try:
+            service = connectToCalendar()
+            cache.set("service", service)
+            g.error = False
+        except Exception as e:
+            flash(e)
+            g.error = True
+            return render_template('site/book.html')
 
     # Get the calendar's timezone and save in all the various forms I'll need to use
     if session.get('tzName') is None:
@@ -171,7 +174,16 @@ def book():
             session['offset'] -= 1
 
     # Get the week's information and its openings
-    week, openings = getOpeningsForWeek(service)
+    ## Use cached values if available, otherwise query again and save
+
+### *** Can I use a dictionary in my cache? *** ###
+    if cache.get("week[session['offset']]") is None:
+        week, openings = getOpeningsForWeek(service)
+        cache.set("week[session['offset']]", week)
+        cache.set("openings[session['offset']]", openings)
+    else:
+        week = cache.get("week[session['offset']]")
+        openings = cache.get("openings[session['offset']]")
 
 ### Practice values ###
 #     g.error = False
