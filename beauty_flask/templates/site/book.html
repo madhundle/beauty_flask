@@ -16,13 +16,13 @@ content_header, flashed messages, and content are in
 {% endblock %}
 
 {% block content %}
-{% if g.error is sameas false %}
+{% if g.error is not defined or g.error is sameas false %}
 <div class="container-fluid text-center">
     <h1>Available Sessions</h1>
 </div>
 
 <div id="sessions" class="container-fluid mt-2 mb-4">
-<span>All times displayed are in {{ timezone }}.</span>
+<span>All times displayed are in {{ session.tzStr }}.</span>
 <form method="POST">
   <table class="table table-light text-center">
     {# Header row with prev icon, month days, and next icons #}

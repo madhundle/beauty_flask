@@ -57,6 +57,7 @@ def getEventsForWeek(service, start):
 
     return [(e['start']['dateTime'],e['end']['dateTime']) for e in events_result['items']]
 
+
 def getOpeningsForWeek(service):
     """
     From a start datetime through the end of that week, compare availability versus event conflicts
@@ -65,6 +66,7 @@ def getOpeningsForWeek(service):
     The start datetime is either the current datetime or the very beginning of a future week, 
     depending on the session 'offset' variable
     """
+    flash("In getOpeningsForWeek")
     # Create the week's info
     week = {d:[] for d in DAYS} # will store {'day': ['Mon', 'dd']} e.g. {'Sun': ['May', '09']}
     tzInfo = tz.gettz(session['tzName']) # the tzinfo type of timezone information for use with datetime
@@ -134,11 +136,13 @@ def getOpeningsForWeek(service):
 
     return week, openings
 
+
 @bp.route('/book', methods=('GET', 'POST'))
 def book():
     # Connect to calendar or fail gracefully (directing user to Contact Me page)
     service = cache.get("service") 
     if service is None: # service hasn't been added to cache or expired
+        flash("No service in cache, getting new service")
         try:
             service = connectToCalendar()
             cache.set("service", service)
@@ -147,59 +151,72 @@ def book():
             flash(e)
             g.error = True
             return render_template('site/book.html')
+    else:
+        flash("Got service from cache")
 
     # Get the calendar's timezone and save in all the various forms I'll need to use
-    if session.get('tzName') is None:
+    if session.get('tzStr') is None:
         try: # try to query calendar
             tzName = getCalendarTimezone(service) # the IANA timezone name e.g. 'America/Chicago'
         except: # default to Central time if the query fails
-            session['tzName'] = 'America/Chicago' 
-        else: # no exception
-            session['tzName'] = tzName
-    # Save a more human-friendly name for output if possible
-    tzStrs = {'CDT':'Central Daylight Time', 'CST':'Central Standard Time'}
-    ltz = datetime.now().astimezone().strftime('%Z')
-    if ltz in tzStrs and session['tzName'] == 'America/Chicago':
-        tzStr = tzStrs[ltz]
-    else: 
-        tzStr = "the " + tzName + " timezone"
+            tzName = 'America/Chicago'
+        # Save human-friendly name for output
+        tzStrs = {'CDT':'Central Daylight Time', 'CST':'Central Standard Time'}
+        ltz = datetime.now().astimezone().strftime('%Z')
+        if ltz in tzStrs and tzName == 'America/Chicago':
+            session['tzStr'] = tzStrs[ltz]
+        else: 
+            session['tzStr'] = "the " + tzName + " timezone"
 
     # Update the week offset if applicable
     if session.get('offset') is None or request.method == 'GET':
+        flash("Should be setting offset to 0")
         session['offset'] = 0
     elif request.method == 'POST' and request.form.get('next'):
-        session['offset'] += 1
+        session['offset'] = session.get('offset') + 1
+        flash("POST next")
     elif request.method == 'POST' and request.form.get('prev'):
         if session['offset'] > 0: # don't ever go below 0
-            session['offset'] -= 1
+            session['offset'] = session.get('offset') - 1
+        flash("POST prev")
+    offset = session['offset']
+    flash("offset {}".format(offset))
 
     # Get the week's information and its openings
     ## Use cached values if available, otherwise query again and save
-
-### *** Can I use a dictionary in my cache? *** ###
-    if cache.get("week[session['offset']]") is None:
-        week, openings = getOpeningsForWeek(service)
-        cache.set("week[session['offset']]", week)
-        cache.set("openings[session['offset']]", openings)
+    if cache.get("week_{}".format(offset)) is None:
+        flash("week_{} was None, should be getting new info".format(offset))
+        try:
+            week, openings = getOpeningsForWeek(service)
+#            flash(week)
+        except Exception as e:
+            flash(e)
+            flash("Error while getting the openings for that week.")
+        try:
+            cache.set("week_{}".format(offset), week)
+            cache.set("openings_{}".format(offset), openings)
+        except Exception as e:
+            flash(e)
+            flash("Error while saving week and openings to cache.")
     else:
-        week = cache.get("week[session['offset']]")
-        openings = cache.get("openings[session['offset']]")
+        flash("week_offset was cached, should be using cached info")
+        week = cache.get("week_{}".format(offset))
+        openings = cache.get("openings_{}".format(offset))
 
 ### Practice values ###
 #     g.error = False
 #     week = {'Sun': ['May', '09'], 'Mon': ['May', '10'], 'Tue': ['May', '11'], 'Wed': ['May', '12'], 'Thu': ['May', '13'], 'Fri': ['May', '14'], 'Sat': ['May', '15']}
 #     openings = {'Sun': ['1700', '1900', '1930', '2000'], 'Mon': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Tue': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Wed': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Thu': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Fri': ['1830', '1900', '1930', '2000'], 'Sat': ['0900', '0930', '1000', '1030', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000']}
 # 
-#    flash(week)    
-#    flash(openings)
+    flash(week)    
+    flash(openings)
 
     # Set up values for rendering on site
     otbset = set()
     for times in openings.values():
         otbset.update(set(times))
-
-    return render_template('site/book.html', timezone=tzStr, days=DAYS, timeblocks=sorted(list(otbset)), week=week, 
-                           openings=openings)
+    return render_template('site/book.html', days=DAYS, timeblocks=sorted(list(otbset)),
+                            week=week, openings=openings)
 
 @bp.route('/pay')
 def pay():
