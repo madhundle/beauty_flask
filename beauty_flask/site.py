@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, render_template, g, session, request, current_app
+    Blueprint, flash, render_template, g, session, request, redirect, url_for, jsonify, make_response
 )
 
 import os.path
@@ -25,6 +25,14 @@ bp = Blueprint('site', __name__)
 def index():
     return render_template('site/index.html')
 
+
+@bp.route('/pay')
+def pay():
+    return render_template('site/pay.html')
+
+@bp.route('/contact')
+def contact():
+    return render_template('site/contact.html')
 
 def connectToCalendar():
     """
@@ -66,14 +74,13 @@ def getOpeningsForWeek(service):
     The start datetime is either the current datetime or the very beginning of a future week, 
     depending on the session 'offset' variable
     """
-    flash("In getOpeningsForWeek")
     # Create the week's info
     week = {d:[] for d in DAYS} # will store {'day': ['Mon', 'dd']} e.g. {'Sun': ['May', '09']}
     tzInfo = tz.gettz(session['tzName']) # the tzinfo type of timezone information for use with datetime
 
     now = datetime.now(tzInfo) 
-    if session.get('offset') is None:
-        flash("Unexpected error while trying to get available sessions")
+#    if session.get('offset') is None:
+#        flash("Unexpected error while trying to get available sessions")
     if session['offset'] == 0: # this week
         baseDateTime = now
     else: # a future week
@@ -136,23 +143,88 @@ def getOpeningsForWeek(service):
 
     return week, openings
 
+""" # A separate route to catch POSTs is possible
+@bp.route('/book', methods=['POST'])
+def book_post():
+    g.error = True
+    flash("Caught POST")
+    return render_template('site/book.html')
+"""
 
-@bp.route('/book', methods=('GET', 'POST'))
+@bp.route('/openings')
+def openings():
+    # Get service from cache, or renew
+    service = cache.get("service") 
+    if service is None: # service is expired
+        try:
+            service = connectToCalendar()
+            cache.set("service", service)
+        except Exception as e:
+            return jsonify(error = e);
+
+    # Get offset from session
+    offset = session['offset']
+
+    # Get the week's information and its openings
+    ## Use cached values if available, otherwise query again and save
+    week = cache.get("week_{}".format(offset))
+    openings = cache.get("openings_{}".format(offset))
+    if week is None or openings is None:
+        try:
+            week, openings = getOpeningsForWeek(service)
+        except Exception as e:
+            return jsonify(error = e);
+        else:
+            cache.set("week_{}".format(offset), week)
+            cache.set("openings_{}".format(offset), openings)
+
+### Practice values ###
+#     g.error = False
+#    week = {'Sun': ['May', '09'], 'Mon': ['May', '10'], 'Tue': ['May', '11'], 'Wed': ['May', '12'], 'Thu': ['May', '13'], 'Fri': ['May', '14'], 'Sat': ['May', '15']}
+#    openings = {'Sun': ['1700', '1900', '1930', '2000'], 'Mon': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Tue': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Wed': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Thu': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Fri': ['1830', '1900', '1930', '2000'], 'Sat': ['0900', '0930', '1000', '1030', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000']}
+
+    return jsonify(week=week, openings=openings)
+
+# Alternative way to respond with make_response
+#    headers = {"Content-Type": "application/json"}
+#               "Access-Control-Allow-Origin": "*"}
+#    return make_response({'hey':'Test response!'}, 200, headers) 
+
+@bp.route('/book', methods=['POST'])
+def update_offset():
+    # Update the offset based on 'POST', then redirect to base page
+    if session.get('offset') is None:
+#        flash("Setting offset to 0")
+        session['offset'] = 0
+    elif request.method == 'POST' and request.form.get('next'):
+        session['offset'] = session.get('offset') + 1
+#        flash("POST next")
+    elif request.method == 'POST' and request.form.get('prev'):
+        if session['offset'] > 0: # don't ever go below 0
+            session['offset'] = session.get('offset') - 1
+#        flash("POST prev")
+    offset = session['offset']
+#    flash("offset {}".format(offset))
+
+    return redirect(url_for('site.book'))
+
+
+@bp.route('/book', methods=['GET'])
 def book():
     # Connect to calendar or fail gracefully (directing user to Contact Me page)
     service = cache.get("service") 
     if service is None: # service hasn't been added to cache or expired
-        flash("No service in cache, getting new service")
+#        flash("No service in cache, getting new service")
         try:
             service = connectToCalendar()
             cache.set("service", service)
             g.error = False
         except Exception as e:
-            flash(e)
+#            flash(e)
             g.error = True
             return render_template('site/book.html')
-    else:
-        flash("Got service from cache")
+#    else:
+#        flash("Got service from cache")
 
     # Get the calendar's timezone and save in all the various forms I'll need to use
     if session.get('tzStr') is None:
@@ -168,20 +240,11 @@ def book():
         else: 
             session['tzStr'] = "the " + tzName + " timezone"
 
-    # Update the week offset if applicable
-    if session.get('offset') is None or request.method == 'GET':
-        flash("Should be setting offset to 0")
+    # On initial 'GET' or if 'POST' update_offset fails for some reason, set to 0
+    if session.get('offset') is None:
         session['offset'] = 0
-    elif request.method == 'POST' and request.form.get('next'):
-        session['offset'] = session.get('offset') + 1
-        flash("POST next")
-    elif request.method == 'POST' and request.form.get('prev'):
-        if session['offset'] > 0: # don't ever go below 0
-            session['offset'] = session.get('offset') - 1
-        flash("POST prev")
-    offset = session['offset']
-    flash("offset {}".format(offset))
-
+    
+    """
     # Get the week's information and its openings
     ## Use cached values if available, otherwise query again and save
     if cache.get("week_{}".format(offset)) is None:
@@ -202,27 +265,20 @@ def book():
         flash("week_offset was cached, should be using cached info")
         week = cache.get("week_{}".format(offset))
         openings = cache.get("openings_{}".format(offset))
+    """
 
 ### Practice values ###
 #     g.error = False
-#     week = {'Sun': ['May', '09'], 'Mon': ['May', '10'], 'Tue': ['May', '11'], 'Wed': ['May', '12'], 'Thu': ['May', '13'], 'Fri': ['May', '14'], 'Sat': ['May', '15']}
-#     openings = {'Sun': ['1700', '1900', '1930', '2000'], 'Mon': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Tue': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Wed': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Thu': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Fri': ['1830', '1900', '1930', '2000'], 'Sat': ['0900', '0930', '1000', '1030', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000']}
-# 
-    flash(week)    
-    flash(openings)
+#    week = {'Sun': ['May', '09'], 'Mon': ['May', '10'], 'Tue': ['May', '11'], 'Wed': ['May', '12'], 'Thu': ['May', '13'], 'Fri': ['May', '14'], 'Sat': ['May', '15']}
+#    openings = {'Sun': ['1700', '1900', '1930', '2000'], 'Mon': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Tue': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Wed': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Thu': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Fri': ['1830', '1900', '1930', '2000'], 'Sat': ['0900', '0930', '1000', '1030', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000']}
+ 
+#    flash(week)    
+#    flash(openings)
 
-    # Set up values for rendering on site
-    otbset = set()
-    for times in openings.values():
-        otbset.update(set(times))
-    return render_template('site/book.html', days=DAYS, timeblocks=sorted(list(otbset)),
-                            week=week, openings=openings)
-
-@bp.route('/pay')
-def pay():
-    return render_template('site/pay.html')
-
-@bp.route('/contact')
-def contact():
-    return render_template('site/contact.html')
+#    # Set up values for rendering on site
+#    otbset = set()
+#    for times in openings.values():
+#        otbset.update(set(times))
+    return render_template('site/book.html', days=DAYS, timeblocks=TIMEBLOCKS)
+#                           timeblocks=sorted(list(otbset)), week=week, openings=openings)
 

@@ -21,12 +21,21 @@ content_header, flashed messages, and content are in
     <h1>Available Sessions</h1>
 </div>
 
-<div id="sessions" class="container-fluid mt-2 mb-4">
+{# loaderDiv to be displayed until openingsDiv gets populated #}
+<div id="loaderDiv" class="mt-4 mb-4">
+  <div class="d-flex row justify-content-center text-center">
+    <div class="loader"></div><p class="mt-2">Loading...</p>
+  </div>
+</div>
+
+{# openingsDiv with the meat of the page: the table of available session #}
+<div id="openingsDiv" class="container-fluid mt-2 mb-4" style="display:none;">
 <span>All times displayed are in {{ session.tzStr }}.</span>
 <form method="POST">
   <table class="table table-light text-center">
+  <tbody id="openingsTable">
     {# Header row with prev icon, month days, and next icons #}
-    <tr>
+    <tr id="weekMDRow">
       {% if session.offset is gt 0 %}
       <td id="prevCol" class="schedButtonCol" rowspan="{{ timeblocks|length +2 }}" onclick="clickButton('prev')">
         <div class="schedButton">
@@ -38,7 +47,7 @@ content_header, flashed messages, and content are in
       <td class="schedButtonCol disabled" rowspan="{{ timeblocks|length +2 }}"></td>
       {% endif %}
       </td>
-      {% for d in days %}<th>{{ week[d][0] }} {{ week[d][1] }}</th>{% endfor %}
+{#      {% for d in days %}<th>{{ week[d][0] }} {{ week[d][1] }}</th>{% endfor %} #}
       <td id="nextCol" class="schedButtonCol" rowspan="{{ timeblocks|length +2 }}" onclick="clickButton('next')">
         <div class="schedButton">
           <button id="nextButton" type="submit" name="next" value="True">
@@ -50,6 +59,8 @@ content_header, flashed messages, and content are in
     {# Header row with weekdays #}
     <tr style="border-bottom: 1px solid black;">{% for d in days %}<th>{{ d }}</th>{% endfor %}</tr>
     {# Table body of openings #}
+
+{#
     {% for tb in timeblocks %}
       <tr>  
       {% for d in days %}
@@ -62,8 +73,10 @@ content_header, flashed messages, and content are in
         {% endif %}
       {% endfor %}
       </tr>
-    {% endfor %}
+    {% endfor %} #}
+  </tbody>
   </table>
+</form>
 </div>
 
 <script type="text/javascript">
@@ -71,13 +84,76 @@ content_header, flashed messages, and content are in
   function clickButton(btn) {
     document.getElementById(btn+"Button").click();
   }
-/*  document.getElementById("prevCol").onclick = function() {
-      document.getElementById("prevButton").click();
-  }
-  document.getElementById("nextCol").onclick = function() {
-      document.getElementById("nextButton").click();
-  }*/
 </script>
 
+<script type="text/javascript">
+  /* Show loader until available sessions can be fetched, then display */
+  /* console.log(`window.location.origin/openings: ${window.location.origin}/openings`) */
+  fetch(`${window.location.origin}/openings`)
+    .then(response => response.json())
+    .then(function(data) {
+      week = data["week"];
+      openings = data["openings"];
+      console.log("week:")
+      console.log(week);
+      console.log("openings:")
+      console.log(openings);
+      if ("error" in data) {
+        console.log("error: " + data["error"]);
+      }
+
+      /* Build the header row of "Month Day" cells */
+      var days = {{ days|tojson }};
+      /* console.log(days); */
+      var timeblocks = {{ timeblocks|tojson }};
+      /* console.log(timeblocks); */
+      var weekMDRow = document.getElementById("weekMDRow");
+      for (let d of days) {
+        /* console.log(d); */
+        /* console.log(`${week[d][0]} ${week[d][1]}`); */
+        let newTh = document.createElement("th");
+        let newContent = document.createTextNode(`${week[d][0]} ${week[d][1]}`);
+        newTh.appendChild(newContent);
+        weekMDRow.insertBefore(newTh, weekMDRow.lastElementChild);
+      }
+
+      /* Build the rows of openings */
+      var openingsTable = document.getElementById("openingsTable");
+      for (let td of timeblocks) {
+        var newTr = document.createElement("tr");
+        let rowHasOpenings = false; /* flag */
+        
+        for (let d of days) {
+          let newTd = document.createElement("td"); 
+          /* if opening, build and add the button */
+          if (d in openings) {
+            if (openings[d].includes(td)) {
+              /* build button and add to td */
+              let newButton = document.createElement("button");
+              newButton.classList.add("bookButton");
+              newButton.setAttribute("name", "booking");
+              newButton.setAttribute("value", `${d}_${td}`);
+              let newContent = document.createTextNode(td);
+              newButton.appendChild(newContent);
+              newTd.appendChild(newButton);
+              rowHasOpenings = true;
+            }
+          }
+          newTr.appendChild(newTd);
+        } 
+
+        /* only keep row if populated */
+        if (rowHasOpenings) {
+        openingsTable.appendChild(newTr);
+        }
+      }
+      
+      loaderDiv = document.getElementById("loaderDiv");
+      openingsDiv = document.getElementById("openingsDiv");
+      loaderDiv.style.display = "none";
+      openingsDiv.style.display = "inherit";
+    })
+    .catch(error => console.log(error));
+</script>
 {% endif %}
 {% endblock %}
