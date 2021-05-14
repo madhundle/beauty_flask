@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, render_template, g, session, request, redirect, url_for, jsonify, make_response, current_app
+    Blueprint, flash, render_template, g, session, request, redirect, url_for, jsonify, make_response
 )
 
 import os.path
@@ -33,10 +33,6 @@ def pay():
 @bp.route('/contact')
 def contact():
     return render_template('site/contact.html')
-
-#--------------------------------------------------------------------------------------------------#
-#                                      Booking Functionality                                       #
-#--------------------------------------------------------------------------------------------------#
 
 def connectToCalendar():
     """
@@ -147,55 +143,27 @@ def getOpeningsForWeek(service):
 
     return week, openings
 
-
-#--------------------------------------------------------------------------------------------------#
-#                                          Booking Views                                           #
-#--------------------------------------------------------------------------------------------------#
+""" # A separate route to catch POSTs is possible
+@bp.route('/book', methods=['POST'])
+def book_post():
+    g.error = True
+    flash("Caught POST")
+    return render_template('site/book.html')
+"""
 
 @bp.route('/openings')
 def openings():
-    # Connect to calendar or fail gracefully (directing user to Contact Me page)
-    ## Get service from cache, or renew
+    # Get service from cache, or renew
     service = cache.get("service") 
-    if service is None: # service not created yet or is expired
+    if service is None: # service is expired
         try:
             service = connectToCalendar()
             cache.set("service", service)
-            current_app.logger.debug("Successfully connected to service")
         except Exception as e:
-#            g.error = True
-#            return redirect(url_for('site.book'))
-#            return jsonify(error = e);
-            current_app.logger.info("Error while connecting to calendar to get service")
-            current_app.logger.error(e)
-            pass
-    else:
-        current_app.logger.debug("Got service from cache")
+            return jsonify(error = e);
 
-     # Get the calendar's timezone and save in the various forms needed
-    if session.get('tzStr') is None or session.get('tzName') is None:
-        try: # try to query calendar
-            tzName = getCalendarTimezone(service) # the IANA timezone name e.g. 'America/Chicago'
-            session['tzName'] = tzName
-            current_app.logger.debug("Successfully got timezone info from calendar")
-        except Exception as e: # default to Central time if the query fails
-            tzName = 'America/Chicago'
-            session['tzName'] = tzName
-            current_app.logger.info("Error while getting timezone info from calender")
-            current_app.logger.error(e)
-        # Save most human-friendly name for output
-        tzStrs = {'CDT':'Central Daylight Time', 'CST':'Central Standard Time'}
-        ltz = datetime.now().astimezone().strftime('%Z')
-        if ltz in tzStrs and tzName == 'America/Chicago':
-            session['tzStr'] = tzStrs[ltz]
-        else: 
-            session['tzStr'] = "the " + tzName + " timezone"
-    
     # Get offset from session
-    offset = session.get('offset')
-    ## Default to 0 if this fails
-    if offset is None:
-        offset = 0    
+    offset = session['offset']
 
     # Get the week's information and its openings
     ## Use cached values if available, otherwise query again and save
@@ -205,12 +173,7 @@ def openings():
         try:
             week, openings = getOpeningsForWeek(service)
         except Exception as e:
-#            g.error = True
-#            return redirect(url_for('site.book'))
-#            return jsonify(error = e);
-            current_app.logger.info("Error while getting the openings")
-            current_app.logger.error(e)
-            pass
+            return jsonify(error = e);
         else:
             cache.set("week_{}".format(offset), week)
             cache.set("openings_{}".format(offset), openings)
@@ -248,7 +211,6 @@ def update_offset():
 
 @bp.route('/book', methods=['GET'])
 def book():
-    """
     # Connect to calendar or fail gracefully (directing user to Contact Me page)
     service = cache.get("service") 
     if service is None: # service hasn't been added to cache or expired
@@ -263,9 +225,7 @@ def book():
             return render_template('site/book.html')
 #    else:
 #        flash("Got service from cache")
-    """
 
-    """
     # Get the calendar's timezone and save in all the various forms I'll need to use
     if session.get('tzStr') is None:
         try: # try to query calendar
@@ -283,7 +243,6 @@ def book():
     # On initial 'GET' or if 'POST' update_offset fails for some reason, set to 0
     if session.get('offset') is None:
         session['offset'] = 0
-    """
     
     """
     # Get the week's information and its openings
