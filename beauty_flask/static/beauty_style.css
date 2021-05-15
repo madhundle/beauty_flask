@@ -74,8 +74,32 @@ a:hover {
 
 .card {
     margin-bottom:20px;
-    border-radius: 0 0 15px 15px;
+    border-radius: 15px;
     box-shadow: 5px 5px 15px grey;
+}
+
+.card-img-top {
+    border-radius: 15px 15px 0px 0px;
+}
+
+.card-link {
+    display:inline-block;
+    font-size:125%;
+    border: 2px solid #D8BC70;
+    border-radius: 10px;
+    background-color:white;
+    white-space: pre;
+    vertical-align:middle;
+    padding-top:10px;
+}
+.card-link:hover {
+    background-color: #ECDEB7;
+}
+
+.card-link i {
+    display:inline-block;
+    vertical-align:middle;
+    padding-top:4px;
 }
 
 .portraitWall {
@@ -194,6 +218,11 @@ td.disabled {
     animation: fade-in 1s 0.5s forwards;
 }
 
+.fadeInNoDelay {
+    opacity: 0; /* start invisible, delayed fade-in, forwards keeps opaque after animation */
+    animation: fade-in 1s forwards;
+}
+
 #openingsDiv {
     animation: fade-in 1s;
 }
@@ -207,3 +236,4 @@ td.disabled {
     0% { opacity: 0; }
     100% { opacity: 1; }
 }
+

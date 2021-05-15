@@ -154,6 +154,10 @@ def getOpeningsForWeek(service):
 
 @bp.route('/openings')
 def openings():
+    """
+    This view is only ever accessed by JavaScript fetch from the 'book' page
+    Gets the available openings for a week and sends them JSONed
+    """
     # Connect to calendar or fail gracefully (directing user to Contact Me page)
     ## Get service from cache, or renew
     service = cache.get("service") 
@@ -224,24 +228,33 @@ def openings():
 
 # Alternative way to respond with make_response
 #    headers = {"Content-Type": "application/json"}
-#               "Access-Control-Allow-Origin": "*"}
+##               "Access-Control-Allow-Origin": "*"}
 #    return make_response({'hey':'Test response!'}, 200, headers) 
 
+
 @bp.route('/book', methods=['POST'])
-def update_offset():
-    # Update the offset based on 'POST', then redirect to base page
+def book_POST():
+    # 'POST' was to book an appointment
+    if request.form.get('booking'):
+        appt = request.form.get('booking')
+        apptDT = datetime.strptime("{}_{}_{}".format('2021', appt, '00'), '%Y_%b_%d_%H%M_%S')
+        session['apptDT'] = apptDT # save to session
+        return redirect(url_for('site.booking'))
+    
+    # 'POST' was to scroll through the schedule
+    ## Update the offset based on 'POST', then redirect to base page
     if session.get('offset') is None:
-#        flash("Setting offset to 0")
         session['offset'] = 0
-    elif request.method == 'POST' and request.form.get('next'):
+        current_app.logger.debug("book POST, offset not in session")
+    elif request.form.get('next'):
         session['offset'] = session.get('offset') + 1
-#        flash("POST next")
-    elif request.method == 'POST' and request.form.get('prev'):
-        if session['offset'] > 0: # don't ever go below 0
+        current_app.logger.debug("book POST, next")
+    elif request.form.get('prev'):
+        if session['offset'] > 0: # safety to never go below 0
             session['offset'] = session.get('offset') - 1
-#        flash("POST prev")
+        current_app.logger.debug("book POST, prev")
     offset = session['offset']
-#    flash("offset {}".format(offset))
+    current_app.logger.debug("offset {}".format(offset))
 
     return redirect(url_for('site.book'))
 
@@ -249,77 +262,71 @@ def update_offset():
 @bp.route('/book', methods=['GET'])
 def book():
     """
-    # Connect to calendar or fail gracefully (directing user to Contact Me page)
+    Main landing page for Booking an appointment
+    Search through available sessions and book an appointment
+    """
+    return render_template('site/book.html', days=DAYS, timeblocks=TIMEBLOCKS)
+
+
+@bp.route('/booking', methods=['GET'])
+def booking():
+    """
+    After use has selected an appointment time, allow them to confirm it or go back
+    """
+    # Datetime object for the appointment
+    apptDT = session['apptDT']
+
+    # Craft human-friendly appointment date and times
+    dStr = {1: 'st', 2: 'nd', 3: 'rd', 4: 'th', 5: 'th', 6: 'th', 7: 'th', 8: 'th', 9: 'th', 0: 'th'}
+    apptDate = apptDT.strftime("%A, %B %d") + dStr[int(apptDT.strftime("%d")[1])]
+    apptTime = {'start' : apptDT.strftime("%H:%M")+apptDT.strftime("%p").lower(),
+                'end': (apptDT + BOOKING_LEN).strftime("%H:%M")+(apptDT + BOOKING_LEN).strftime("%p").lower()}
+
+#    apptStr = apptDT.strftime("%A, %B %d") + dStr[int(apptDT.strftime("%d")[1])] + apptDT.strftime(" at %H:%M")+apptDT.strftime("%p").lower()
+#    apptStr = session['appt']
+    return render_template('site/booking.html', apptDate=apptDate, apptTime=apptTime)
+
+
+@bp.route('/bookAppt', methods=['GET'])
+def bookAppt(service, appt):
+    """
+    This view is only ever accessed by JavaScript fetch from the 'booked' page
+    Book appointment on calendar for given date and time
+    """
+    # Get the service to connect to calendar
     service = cache.get("service") 
-    if service is None: # service hasn't been added to cache or expired
-#        flash("No service in cache, getting new service")
+    if service is None: # service not created yet or is expired
         try:
             service = connectToCalendar()
             cache.set("service", service)
+            current_app.logger.debug("Successfully connected to service")
             g.error = False
         except Exception as e:
-#            flash(e)
             g.error = True
-            return render_template('site/book.html')
-#    else:
-#        flash("Got service from cache")
-    """
-
-    """
-    # Get the calendar's timezone and save in all the various forms I'll need to use
-    if session.get('tzStr') is None:
-        try: # try to query calendar
-            tzName = getCalendarTimezone(service) # the IANA timezone name e.g. 'America/Chicago'
-        except: # default to Central time if the query fails
-            tzName = 'America/Chicago'
-        # Save human-friendly name for output
-        tzStrs = {'CDT':'Central Daylight Time', 'CST':'Central Standard Time'}
-        ltz = datetime.now().astimezone().strftime('%Z')
-        if ltz in tzStrs and tzName == 'America/Chicago':
-            session['tzStr'] = tzStrs[ltz]
-        else: 
-            session['tzStr'] = "the " + tzName + " timezone"
-
-    # On initial 'GET' or if 'POST' update_offset fails for some reason, set to 0
-    if session.get('offset') is None:
-        session['offset'] = 0
-    """
-    
-    """
-    # Get the week's information and its openings
-    ## Use cached values if available, otherwise query again and save
-    if cache.get("week_{}".format(offset)) is None:
-        flash("week_{} was None, should be getting new info".format(offset))
-        try:
-            week, openings = getOpeningsForWeek(service)
-#            flash(week)
-        except Exception as e:
-            flash(e)
-            flash("Error while getting the openings for that week.")
-        try:
-            cache.set("week_{}".format(offset), week)
-            cache.set("openings_{}".format(offset), openings)
-        except Exception as e:
-            flash(e)
-            flash("Error while saving week and openings to cache.")
+            current_app.logger.info("Error while connecting to calendar to get service")
+            current_app.logger.error(e)
+            return redirect(url_for('site.booked'))
+            pass
     else:
-        flash("week_offset was cached, should be using cached info")
-        week = cache.get("week_{}".format(offset))
-        openings = cache.get("openings_{}".format(offset))
+        current_app.logger.debug("Got service from cache")
+
+
+
+
+    cal = service.calendars().get(calendarId='onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com').execute()
+    endDate = (start + timedelta(days=6-int(start.strftime('%w')))).date()
+    end=datetime(endDate.year,endDate.month,endDate.day,23,59,59,999999,tz.gettz('America/Chicago'))
+    events_result = service.events().list(calendarId='onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com',
+                                          orderBy='startTime', singleEvents=True,
+                                          timeMin=start.isoformat(), timeMax=end.isoformat()).execute()
+
+
+    return
+
+
+@bp.route('/booked', methods=['GET'])
+def booked():
     """
-
-### Practice values ###
-#     g.error = False
-#    week = {'Sun': ['May', '09'], 'Mon': ['May', '10'], 'Tue': ['May', '11'], 'Wed': ['May', '12'], 'Thu': ['May', '13'], 'Fri': ['May', '14'], 'Sat': ['May', '15']}
-#    openings = {'Sun': ['1700', '1900', '1930', '2000'], 'Mon': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Tue': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Wed': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Thu': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Fri': ['1830', '1900', '1930', '2000'], 'Sat': ['0900', '0930', '1000', '1030', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000']}
- 
-#    flash(week)    
-#    flash(openings)
-
-#    # Set up values for rendering on site
-#    otbset = set()
-#    for times in openings.values():
-#        otbset.update(set(times))
-    return render_template('site/book.html', days=DAYS, timeblocks=TIMEBLOCKS)
-#                           timeblocks=sorted(list(otbset)), week=week, openings=openings)
-
+    When the user has confirmed their appointment selection, serve this page
+    """
+    return render_template('site/booked.html')

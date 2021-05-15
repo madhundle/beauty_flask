@@ -30,9 +30,9 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    # import logging functionality
-    import logging
-
+#    # import logging functionality
+#    import logging
+#
     # import db functionality
     from . import db
     db.init_app(app)
