@@ -73,6 +73,7 @@ a:hover {
 }
 
 .card {
+    margin-top:20px;
     margin-bottom:20px;
     border-radius: 15px;
     box-shadow: 5px 5px 15px grey;
@@ -82,24 +83,20 @@ a:hover {
     border-radius: 15px 15px 0px 0px;
 }
 
-.card-link {
-    display:inline-block;
+.btn-gold {
     font-size:125%;
+    background-color:white;
     border: 2px solid #D8BC70;
     border-radius: 10px;
-    background-color:white;
-    white-space: pre;
-    vertical-align:middle;
     padding-top:10px;
 }
-.card-link:hover {
+
+.btn-gold:hover {
     background-color: #ECDEB7;
 }
 
-.card-link i {
-    display:inline-block;
-    vertical-align:middle;
-    padding-top:4px;
+.gold-shadow {
+    text-shadow: 15px 15px 25px #D8BC70, -15px 15px 25px #D8BC70, 15px -15px 25px #D8BC70, -15px -15px 25px #D8BC70, 25px 0 25px #D8BC70, -25px 0 25px #D8BC70;
 }
 
 .portraitWall {

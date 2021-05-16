@@ -11,22 +11,31 @@ content_header, flashed messages, and content are in
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid d-flex justify-content-center mh-70 fadeInNoDelay">
-  <div class="card text-center bg-light col-lg-6 col-md-8 col-sm-12">
+<div class="d-flex flex-column align-items-center fadeInNoDelay">
+  <a class="btn btn-gold" href={{ url_for('site.book') }}><i class="bi-arrow-left"></i>&nbsp;&nbsp;Change Selection</a>
+
+  <div class="card text-center bg-light col-lg-4 col-md-6 col-sm-10">
     <img class="card-img-top" src="{{ url_for('static', filename="images/makeup2.jpg") }}" alt="makeup">
     <div class="card-body">
       <h3 class="card-title">Custom Makeup Session</h3>
       <h4 class="card-title">{{ apptDate }}</h4>
       <h4 class="card-title">{{ apptTime.start }} &ndash; {{ apptTime.end }}</h4>
-      <div class="d-flex row justify-content-around">
-        <div class="col py-1">
-          <a class="card-link btn btn-light" href={{ url_for('site.book') }}><i class="bi-arrow-left"></i>  Change Selection</a>
-        </div>
-        <div class="col py-1">
-          <a class="card-link btn btn-light" href={{ url_for('site.booked') }}>Confirm Appointment  <i class="bi-arrow-right"></i></a>
-        </div>
-      </div>
     </div>
   </div>
+
+  <form method="POST" class="text-center">
+    <div class="d-flex row justify-items-around align-items-center">
+      <div class="col">
+        <p><label for="clientName">Your Name:&nbsp;&nbsp;&nbsp;</label></p>
+        <p><label for="clientEmail">Your Email:&nbsp;&nbsp;&nbsp;</label></p>
+      </div>
+      <div class="col">
+        <p><input id="clientName" name="clientName" type="text" placeholder="Your name here" required></p>
+        <p><input id="clientEmail" name="clientEmail" type="email" placeholder="youremail@address.com" required></p>
+      </div>
+    </div>
+    <button class="btn btn-gold" type="submit">Confirm Appointment&nbsp;&nbsp;<i class="bi-arrow-right"></i></button>
+  </form>
+
 </div>
 {% endblock %}

@@ -50,12 +50,21 @@ def create_app(test_config=None):
     app.add_url_rule('/', endpoint='index')
 
     # Extensions
-    # import cache functionality
-    from .cache import cache
-#    app.config.from_mapping(CACHE_TYPE='SimpleCache')
+    ## Caching and Mail
+    from .extensions import cache, mail
+    ## Configure extensions for this app
+    app.config.from_mapping(
+        CACHE_TYPE='SimpleCache',
+        CACHE_DEFAULT_TIMEOUT=900,
+        MAIL_SERVER='smtp.madhundle.com',
+        MAIL_PORT=587,
+        MAIL_USERNAME='no-reply@madhundle.com',
+        MAIL_PASSWORD='no-replyMH',
+        MAIL_DEFAULT_SENDER='no-reply@madhundle.com')
+        
+    ## Initialize
     cache.init_app(app)
-#    cache.cache_type = app.config['CACHE_TYPE']
-
+    mail.init_app(app)
 
     return app
 
