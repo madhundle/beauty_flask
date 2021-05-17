@@ -1,3 +1,7 @@
+#--------------------------------------------------------------------------------------------------#
+#                                       Imports and Globals                                        #
+#--------------------------------------------------------------------------------------------------#
+
 from flask import (
     Blueprint, flash, render_template, g, session, request, redirect, url_for, jsonify, make_response, current_app
 )
@@ -19,21 +23,73 @@ DAYS = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
 TIMEBLOCKS = ('0800', '0830', '0900', '0930', '1000', '1030', '1100', '1130', '1200', '1230', '1300', '1330', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000')
 BOOKING_LEN = timedelta(hours=1)
 
-
+# The Site Blueprint
 bp = Blueprint('site', __name__)
 
-@bp.route('/')
+#--------------------------------------------------------------------------------------------------#
+#                                            Home Page                                             #
+#--------------------------------------------------------------------------------------------------#
+
+@bp.route('/', methods=['GET'])
 def index():
     return render_template('site/index.html')
 
 
-@bp.route('/pay')
-def pay():
-    return render_template('site/pay.html')
+#--------------------------------------------------------------------------------------------------#
+#                                      Contact Functionality                                       #
+#--------------------------------------------------------------------------------------------------#
 
-@bp.route('/contact')
+def contactEmail(name, email, message):
+    msg = Message("Contact Message from StephanieBeauty")
+    msg.recipients= ['mh@madhundle.com']
+    msg.html = "<style>body {background-color: #FFF6F5; padding: 10px;}</style>"
+    msg.html += "<p> Name:&nbsp;&nbsp;" + name + "</p>"
+    msg.html += "<p> Email:&nbsp;&nbsp;" + email + "</p>"
+    msg.html += "<p style=\"white-space:pre-wrap;\">Message:&nbsp;&nbsp;<br>" + message + "</p>"
+    mail.send(msg)
+    return
+ 
+
+#--------------------------------------------------------------------------------------------------#
+#                                          Contact Views                                           #
+#--------------------------------------------------------------------------------------------------#
+
+@bp.route('/contact', methods=['POST'])
+def contactPost():
+    name = request.form.get('contactName')
+    email = request.form.get('contactEmail')
+    message = request.form.get('contactMessage')
+    try:
+        contactEmail(name, email, message)
+#        session['sent'] = True
+        flash("Email sent!", 'alert-success')
+    except Exception as e:
+        current_app.logger.debug("Error while sending contact email")   
+        current_app.logger.error(e)
+#        session['sent'] = False
+        flash("Email failed to send. Please try again soon.", 'alert-danger')
+
+    return redirect(url_for('site.contact'))
+
+
+@bp.route('/contact', methods=['GET'])
 def contact():
     return render_template('site/contact.html')
+
+
+#--------------------------------------------------------------------------------------------------#
+#                                      Payment Functionality                                       #
+#--------------------------------------------------------------------------------------------------#
+
+
+
+#--------------------------------------------------------------------------------------------------#
+#                                          Payment Views                                           #
+#--------------------------------------------------------------------------------------------------#
+
+@bp.route('/pay', methods=['GET'])
+def pay():
+    return render_template('site/pay.html')
 
 #--------------------------------------------------------------------------------------------------#
 #                                      Booking Functionality                                       #
@@ -155,9 +211,8 @@ def confirmationEmail():
     """
 #    with app.app_context():
     msg = Message("Appointment Confirmation with Stephanie Beauty")
-    msg.recipients= [session['clientEmail']]
+    msg.recipients = [session['clientEmail']]
     msg.html = "<head><style>body {background-color: #FFF6F5; padding: 10px;}</style></head><body>"
-    msg.html += ""
     msg.html += "<h1 style=\"font-style:italic; text-decoration:underline;\">You're booked!</h1>"
     msg.html += "<h2>Custom Makeup Session</h2>"
     msg.html += "<p>" + session['apptDate'] + "</p>"
@@ -219,7 +274,8 @@ def openings():
     offset = session.get('offset')
     ## Default to 0 if this fails
     if offset is None:
-        offset = 0    
+        offset = 0
+        session['offset'] = 0
 
     # Get the week's information and its openings
     ## Use cached values if available, otherwise query again and save
@@ -233,7 +289,7 @@ def openings():
 #            return redirect(url_for('site.book'))
             current_app.logger.info("Error while getting the openings")
             current_app.logger.error(e)
-            return jsonify(error=e);
+            return jsonify(error="Error while getting the openings: {}".format(e));
 #            pass
         else:
             cache.set("week_{}".format(offset), week)
@@ -285,6 +341,9 @@ def book():
     Main landing page for Booking an appointment
     Search through available sessions and book an appointment
     """
+    # Initialize 'offset'; needed if very first time navigating to page
+    if session.get('offset') is None:
+        session['offset'] = 0
     return render_template('site/book.html', days=DAYS, timeblocks=TIMEBLOCKS)
 
 
@@ -383,4 +442,5 @@ def changeAppt(apptID):
     """
     Allow a user to change or cancel their appointment
     """
-    return
+    # *** This functionality needs writing *** #
+    return redirect(url_for('site.index'))

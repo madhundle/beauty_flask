@@ -2,15 +2,39 @@
 
 {% block title %}Contact Me{% endblock %}
 
+<!-- 
+content_header, flashed messages, and content are in 
+<main class="container-fluid mt-4"> 
+-->
+
 {% block content_header %}
+<div class="container text-center">
+  <h1>Contact Me</h1>
+</div>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid text-center">
-    <h1>Contact Me</h1>
-</div>
 <div class="container-fluid mt-4">
-    <p>My contact information</p>
+  <form method="POST" class="text-center">
+    <div class="d-flex row align-items-center">
+      <div class="col-md-3"></div> {# spacer #}
+      <div class="col-4 col-md-2">
+        <p><label for="contactName">Your Name:</label></p>
+        <p><label for="contactEmail">Your Email:</label></p>
+      </div>
+      <div class="col-8 col-md-4">
+        <p><input id="contactName" name="contactName" type="text" placeholder="Your name here" required></p>
+        <p><input id="contactEmail" name="contactEmail" type="email" placeholder="youremail@address.com" required></p>
+      </div>
+      <div class="col-md-3"></div> {# spacer #}
+    </div>
+    <div class="d=flex row justify-content-center">
+      <div class="col-md-6"><p><textarea class="w-100" name="contactMessage" placeholder="Your message here..." rows='3' required></textarea></p></div>
+    </div>  
+    <div class="d=flex row justify-content-center">
+      <div class="col-4"><button class="btn btn-gold w-100" type="submit">Submit</button></div>
+    </div>  
+  </form>
 </div>
 {% endblock %}
 

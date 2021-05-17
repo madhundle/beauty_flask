@@ -26,6 +26,10 @@ a:hover {
     color: #A79C9A;
 }
 
+.alert {
+    padding: 0.5rem 0.5rem; /* bootstrap default 1rem 1rem is a little big */
+}
+
 /* Custom Carousel Captions per Window Size */
 
 @media (min-width: 768px) { /* media-breakpoint-up(md) */

@@ -31,13 +31,15 @@
 </header>
 
 <main class="container-fluid mt-4">
-    {%block content_header %}{% endblock %}
+  {%block content_header %}{% endblock %}
  
-    {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
+  <div class="container text-center">
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+    <p class="alert {{ category }}">{{ message }}</p>
     {% endfor %}
+  </div>
     
-    {% block content %}{% endblock %}
+  {% block content %}{% endblock %}
 </main>
 
 <footer class="container-fluid d-flex justify-content-end mt-auto">
