@@ -3,7 +3,7 @@
 #--------------------------------------------------------------------------------------------------#
 
 from flask import (
-    Blueprint, flash, render_template, g, session, request, redirect, url_for, jsonify, make_response, current_app
+    Blueprint, flash, render_template, g, session, request, redirect, url_for, jsonify, current_app
 )
 
 import os.path
@@ -18,10 +18,13 @@ from googleapiclient.discovery import build
 from .extensions import cache, mail
 from flask_mail import Message
 
-# Constants needed for calculating datetimes
+# Constants for calculating datetimes
 DAYS = ('Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat')
 TIMEBLOCKS = ('0800', '0830', '0900', '0930', '1000', '1030', '1100', '1130', '1200', '1230', '1300', '1330', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000')
 BOOKING_LEN = timedelta(hours=1)
+
+# Constants for connecting to Google Calendar
+CAL_ID = 'onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com'
 
 # The Site Blueprint
 bp = Blueprint('site', __name__)
@@ -108,7 +111,7 @@ def connectToCalendar():
     
 
 def getCalendarTimezone(service):
-    cal = service.calendars().get(calendarId='onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com').execute()
+    cal = service.calendars().get(calendarId=CAL_ID).execute()
     return cal['timeZone']
 
 
@@ -120,8 +123,7 @@ def getEventsForWeek(service, start):
     """
     endDate = (start + timedelta(days=6-int(start.strftime('%w')))).date()
     end=datetime(endDate.year,endDate.month,endDate.day,23,59,59,999999,tz.gettz('America/Chicago'))
-    events_result = service.events().list(calendarId='onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com', 
-                                          orderBy='startTime', singleEvents=True, 
+    events_result = service.events().list(calendarId=CAL_ID, orderBy='startTime', singleEvents=True, 
                                           timeMin=start.isoformat(), timeMax=end.isoformat()).execute()
 
     return [(e['start']['dateTime'],e['end']['dateTime']) for e in events_result['items']]
@@ -209,26 +211,59 @@ def confirmationEmail():
     """
     Send email confirmation to client
     """
-#    with app.app_context():
     msg = Message("Appointment Confirmation with Stephanie Beauty")
     msg.recipients = [session['clientEmail']]
-    msg.html = "<head><style>body {background-color: #FFF6F5; padding: 10px;}</style></head><body>"
+    msg.html = "<style>body {background-color: #FFF6F5; padding: 10px;}</style>"
     msg.html += "<h1 style=\"font-style:italic; text-decoration:underline;\">You're booked!</h1>"
     msg.html += "<h2>Custom Makeup Session</h2>"
     msg.html += "<p>" + session['apptDate'] + "</p>"
     msg.html += "<p>" + session['apptTime']['start'] + " &ndash; " + session['apptTime']['end'] + "</p>"
-    msg.html += "<p><a href=\"" + url_for('site.booked', apptID=session['apptID'])  + "\">"
+    msg.html += "<p><a href=\"" + url_for('site.booked') + '/' + session['apptID'] + "\">"
+    msg.html += "To cancel or reschedule, use this link</a></p></body>"
+    mail.send(msg)
+    return
+
+
+def cancelEmail():
+    """
+    Send email confirmation to client
+    """
+    msg = Message("Appointment Cancellation with Stephanie Beauty")
+    msg.recipients = [session['clientEmail']]
+    msg.html = "<style>body {background-color: #FFF6F5; padding: 10px;}</style>"
+    msg.html += "<h1 style=\"font-style:italic; text-decoration:underline;\">Your appointment has been cancelled.</h1>"
+    msg.html += "<h2>Custom Makeup Session</h2>"
+    msg.html += "<p>" + session['apptDate'] + "</p>"
+    msg.html += "<p>" + session['apptTime']['start'] + " &ndash; " + session['apptTime']['end'] + "</p>"
+    msg.html += "<p><a href=\"" + url_for('site.book')  + "\">"
+    msg.html += "Use this link to book a different session</a></p></body>"
+    mail.send(msg)
+    return
+
+
+def rescheduleEmail():
+    """
+    Send email confirmation to client
+    """
+    msg = Message("Appointment Rescheduled with Stephanie Beauty")
+    msg.recipients = [session['clientEmail']]
+    msg.html = "<style>body {background-color: #FFF6F5; padding: 10px;}</style>"
+    msg.html += "<h1 style=\"font-style:italic; text-decoration:underline;\">Your appointment has been rescheduled.</h1>"
+    msg.html += "<h2>Custom Makeup Session</h2>"
+    msg.html += "<p>" + session['apptDate'] + "</p>"
+    msg.html += "<p>" + session['apptTime']['start'] + " &ndash; " + session['apptTime']['end'] + "</p>"
+    msg.html += "<p><a href=\"" + url_for('site.booked') + '/' + session['apptID'] + "\">"
     msg.html += "To cancel or reschedule, use this link</a></p></body>"
     mail.send(msg)
     return
 
 
 #--------------------------------------------------------------------------------------------------#
-#                                          Booking Views                                           #
+#                                      Fetched Booking Views                                       #
 #--------------------------------------------------------------------------------------------------#
 
 @bp.route('/openings')
-def openings():
+def fetchOpenings():
     """
     This view is only ever accessed by JavaScript fetch from the 'book' page
     Gets the available openings for a week and sends them JSONed
@@ -242,12 +277,9 @@ def openings():
             cache.set("service", service)
             current_app.logger.debug("Successfully connected to service")
         except Exception as e:
-#            g.error = True
-#            return redirect(url_for('site.book'))
 #            return jsonify(error = e);
             current_app.logger.info("Error while connecting to calendar to get service")
             current_app.logger.error(e)
-            pass
     else:
         current_app.logger.debug("Got service from cache")
 
@@ -262,7 +294,7 @@ def openings():
             session['tzName'] = tzName
             current_app.logger.info("Error while getting timezone info from calender")
             current_app.logger.error(e)
-        # Save most human-friendly name for output
+        ## Save most human-friendly name for output
         tzStrs = {'CDT':'Central Daylight Time', 'CST':'Central Standard Time'}
         ltz = datetime.now().astimezone().strftime('%Z')
         if ltz in tzStrs and tzName == 'America/Chicago':
@@ -286,11 +318,9 @@ def openings():
             week, openings = getOpeningsForWeek(service)
         except Exception as e:
 #            g.error = True
-#            return redirect(url_for('site.book'))
             current_app.logger.info("Error while getting the openings")
             current_app.logger.error(e)
             return jsonify(error="Error while getting the openings: {}".format(e));
-#            pass
         else:
             cache.set("week_{}".format(offset), week)
             cache.set("openings_{}".format(offset), openings)
@@ -302,10 +332,182 @@ def openings():
 
     return jsonify(week=week, openings=openings)
 
-# Alternative way to respond with make_response
-#    headers = {"Content-Type": "application/json"}
-##               "Access-Control-Allow-Origin": "*"}
-#    return make_response({'hey':'Test response!'}, 200, headers) 
+
+@bp.route('/appointment', methods=['GET'])
+@bp.route('/appointment/<apptID>', methods=['GET'])
+def fetchAppt(apptID=None):
+    """
+    This view is only ever accessed by JavaScript fetch from the 'booked' page
+    Book appointment on calendar for given date and time
+    Or if an appointment ID is provided, just fetch that information
+    """
+    # Get the service to connect to calendar
+    service = cache.get("service") 
+    if service is None: # service not created yet or is expired
+        try:
+            service = connectToCalendar()
+            cache.set("service", service)
+            current_app.logger.debug("Successfully connected to service")
+        except Exception as e:
+            current_app.logger.info("Error while connecting to calendar to get service")
+            current_app.logger.error(e)
+            return jsonify(error="Sorry, there was an error while connecting to the calendar.")
+            pass
+    else:
+        current_app.logger.debug("Got service from cache")
+
+    # If an apptID has been provided, fetch that appointment's information
+    if apptID is not None:
+        event = service.events().get(calendarId=CAL_ID, eventId=apptID).execute()
+    #    event['start']['timeZone']
+        eventStart = datetime.fromisoformat(event['start']['dateTime'])
+        eventEnd = datetime.fromisoformat(event['end']['dateTime'])
+        current_app.logger.debug("Got event start: {}".format(eventStart))
+        current_app.logger.debug("Got event end: {}".format(eventEnd))
+    
+        ## Craft human-friendly appointment date and times
+        dStr = {1: 'st', 2: 'nd', 3: 'rd', 4: 'th', 5: 'th', 6: 'th', 7: 'th', 8: 'th', 9: 'th', 0: 'th'}
+        apptDate = eventStart.strftime("%A, %B %d") + dStr[int(eventStart.strftime("%d")[1])]
+        apptTime = {'start' : eventStart.strftime("%I:%M").lstrip('0') + eventStart.strftime("%p").lower(),
+                    'end': eventEnd.strftime("%I:%M").lstrip('0') + eventEnd.strftime("%p").lower()}
+
+        ## Save all info for rescheduling or cancelling later
+        session['apptID'] = apptID
+        session['apptDate'] = apptDate
+        session['apptTime'] = apptTime
+        session['apptDT'] = eventStart
+#        Do I need these? (I have the apptID and to reschedule just need to get new DT, Date, Time)
+#        session['clientName'] = event['description'].split(';')[0].replace('Session with ','')
+#        session['clientEmail'] = event['description'].split(';')[1].lstrip()
+        session.modified = True # be sure to catch apptTime dict modification
+    
+        ## Return the info or an error message
+        if event:
+            return jsonify(apptDate=apptDate, apptTime=apptTime)
+        else:
+            return jsonify(error="Sorry, there was an error while looking up your booking.")
+
+    # If no apptID, it means a new event is being created and added to the calendar
+    ## Craft the event
+    event = {
+        'summary': "Session with {}".format(session.get('clientName')),
+        'description': "Session with {}; {}".format(session.get('clientName'), session.get('clientEmail')),
+        'start': { 'dateTime': session.get('apptDT').isoformat(), 'timeZone': session.get('tzName') },
+        'end': { 'dateTime': (session.get('apptDT')+BOOKING_LEN).isoformat(), 'timeZone': session.get('tzName') }
+    }
+
+    ## Connect to calendar and create the event
+    try:
+        event = service.events().insert(calendarId=CAL_ID, body=event).execute()
+    except Exception as e:
+        current_app.logger.error(e)
+        return jsonify(error="Sorry, there was an error while booking the appointment.")
+
+    ## If event was successfully created, send confirmation email and show confirmation on page
+    if event.get('id'):
+        ### Save the info for rescheduling or cancelling later
+        session['apptID'] = event['id']
+        ### /bookPost saved apptDT to session
+        ### /booking saved apptDate and apptTime to session
+        try:
+            confirmationEmail()
+            return jsonify(apptID=session['apptID'])
+        except Exception as e:
+            current_app.logger.error(e)
+            return jsonify(apptID=session['apptID'], emailError="Sorry, there was an error while sending your confirmation email.")
+    else:
+        return jsonify(error="Sorry, there was an error while booking the appointment.")
+
+
+@bp.route('/cancel/<apptID>', methods=['GET'])
+def fetchCancel(apptID):
+    """
+    This view is only ever accessed by JavaScript fetch from the 'cancel' page
+    Cancels an appointment given the ID
+    """
+    # Get the service to connect to calendar
+    service = cache.get("service") 
+    if service is None: # service not created yet or is expired
+        try:
+            service = connectToCalendar()
+            cache.set("service", service)
+            current_app.logger.debug("Successfully connected to service")
+        except Exception as e:
+            current_app.logger.info("Error while connecting to calendar to get service")
+            current_app.logger.error(e)
+            return jsonify(error="Sorry, there was an error while connecting to the calendar.")
+    else:
+        current_app.logger.debug("Got service from cache")
+
+    # Cancel the appointment
+    try:
+        service.events().delete(calendarId=CAL_ID, eventId=apptID).execute()
+    except Exception as e:
+        current_app.logger.info("Error while cancelling the event.")
+        current_app.logger.error(e)
+        return jsonify(error="Sorry, there was an error while cancelling the event.")
+
+    # Send email
+    try:
+        cancelEmail()
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(emailError="Sorry, there was an error while sending your confirmation email.")        
+
+
+@bp.route('/reschedule/<apptID>', methods=['GET'])
+def fetchReschedule(apptID):
+    # Get the service to connect to calendar
+    service = cache.get("service") 
+    if service is None: # service not created yet or is expired
+        try:
+            service = connectToCalendar()
+            cache.set("service", service)
+            current_app.logger.debug("Successfully connected to service")
+        except Exception as e:
+            current_app.logger.info("Error while connecting to calendar to get service")
+            current_app.logger.error(e)
+            return jsonify(error="Sorry, there was an error while connecting to the calendar.")
+    else:
+        current_app.logger.debug("Got service from cache")
+
+    # Update appointment
+    try:
+        ## Get the event
+        event = service.events().get(calendarId=CAL_ID, eventId=apptID).execute()
+
+        ## Set updated times
+        event['start'] = { 'dateTime': session['apptDT'].isoformat(), 'timeZone': session['tzName'] }
+        event['end'] = { 'dateTime': (session['apptDT']+BOOKING_LEN).isoformat(), 'timeZone': session['tzName'] }
+
+        ## Update event
+        updated_event = service.events().update(calendarId=CAL_ID, eventId=apptID, body=event).execute()
+        current_app.logger.debug("Updated event.")
+
+    except Exception as e:
+        current_app.logger.debug("Error updating the event.")
+        current_app.logger.error(e)
+        return jsonify(error="Sorry, there was an error while rescheduling your appointment.")
+
+    # Send email
+    try:
+        rescheduleEmail()
+        return jsonify(success=True)
+
+#--------------------------------------------------------------------------------------------------#
+#                                          Booking Views                                           #
+#--------------------------------------------------------------------------------------------------#
+
+@bp.route('/book', methods=['GET'])
+def book():
+    """
+    Main landing page for Booking an appointment
+    Search through available sessions and book an appointment
+    """
+    # Initialize 'offset'; needed if very first time navigating to page
+    if session.get('offset') is None:
+        session['offset'] = 0
+    return render_template('site/book.html', days=DAYS, timeblocks=TIMEBLOCKS)
 
 
 @bp.route('/book', methods=['POST'])
@@ -313,6 +515,7 @@ def bookPost():
     # 'POST' was to book an appointment
     if request.form.get('booking'):
         appt = request.form.get('booking')
+        #*** update 2021 to get a Year
         apptDT = datetime.strptime("{}_{}_{}".format('2021', appt, '00'), '%Y_%b_%d_%H%M_%S')
         session['apptDT'] = apptDT # save to session
         return redirect(url_for('site.booking'))
@@ -335,22 +538,10 @@ def bookPost():
     return redirect(url_for('site.book'))
 
 
-@bp.route('/book', methods=['GET'])
-def book():
-    """
-    Main landing page for Booking an appointment
-    Search through available sessions and book an appointment
-    """
-    # Initialize 'offset'; needed if very first time navigating to page
-    if session.get('offset') is None:
-        session['offset'] = 0
-    return render_template('site/book.html', days=DAYS, timeblocks=TIMEBLOCKS)
-
-
 @bp.route('/booking', methods=['GET'])
 def booking():
     """
-    After use has selected an appointment time, allow them to confirm it or go back
+    After user has selected an appointment time, allow them to confirm it or go back
     """
     # Datetime object for the appointment
     apptDT = session['apptDT']
@@ -359,14 +550,13 @@ def booking():
     dStr = {1: 'st', 2: 'nd', 3: 'rd', 4: 'th', 5: 'th', 6: 'th', 7: 'th', 8: 'th', 9: 'th', 0: 'th'}
     apptDate = apptDT.strftime("%A, %B %d") + dStr[int(apptDT.strftime("%d")[1])]
     apptTime = {'start' : apptDT.strftime("%I:%M").lstrip('0')+apptDT.strftime("%p").lower(),
-                'end': (apptDT + BOOKING_LEN).strftime("%I:%M").lstrip('0') + (apptDT + BOOKING_LEN).strftime("%p").lower()}
+                'end': (apptDT + BOOKING_LEN).strftime("%I:%M").lstrip('0') + 
+                       (apptDT + BOOKING_LEN).strftime("%p").lower()}
     session['apptDate'] = apptDate
     session['apptTime'] = apptTime
     session.modified = True # be sure to catch apptTime dict modification
 
-#    apptStr = apptDT.strftime("%A, %B %d") + dStr[int(apptDT.strftime("%d")[1])] + apptDT.strftime(" at %H:%M")+apptDT.strftime("%p").lower()
-#    apptStr = session['appt']
-    return render_template('site/booking.html', apptDate=apptDate, apptTime=apptTime)
+    return render_template('site/booking.html')
 
 
 @bp.route('/booking', methods=['POST'])
@@ -374,73 +564,57 @@ def bookingPost():
     """
     Let client confirm selected appt time, get their name and email
     """
+    # If rescheduling a booking
+    if session.get("reschedule") is not None:
+        return redirect(url_for('site.reschedule'))
+
+    # If a new booking
     session['clientName'] = request.form.get('clientName')
     session['clientEmail'] = request.form.get('clientEmail')
     return redirect(url_for('site.booked'))
 
 
-@bp.route('/bookAppt', methods=['GET'])
-def bookAppt():
-    """
-    This view is only ever accessed by JavaScript fetch from the 'booked' page
-    Book appointment on calendar for given date and time
-    """
-    # Get the service to connect to calendar
-    service = cache.get("service") 
-    if service is None: # service not created yet or is expired
-        try:
-            service = connectToCalendar()
-            cache.set("service", service)
-            current_app.logger.debug("Successfully connected to service")
-        except Exception as e:
-            current_app.logger.info("Error while connecting to calendar to get service")
-            current_app.logger.error(e)
-            return redirect(url_for('site.booked'))
-            pass
-    else:
-        current_app.logger.debug("Got service from cache")
-
-    # Craft the event
-    event = {
-        'summary': "Session with {}".format(session['clientName']),
-        'description': "Session with {}; {}".format(session['clientName'], session['clientEmail']),
-        'start': { 'dateTime': session['apptDT'].isoformat(), 'timeZone': session['tzName'] },
-        'end': { 'dateTime': (session['apptDT']+BOOKING_LEN).isoformat(), 'timeZone': session['tzName'] }
-    }
-
-    # Connect to calendar and create the event
-    try:
-        event = service.events().insert(calendarId='onspl2i87fputjkjg8h0uhhmno@group.calendar.google.com', 
-                                        body=event).execute()
-    except Exception as e:
-        current_app.logger.error(e)
-        return jsonify(error="Error while creating appointment event.")
-
-    # If event was successfully created, send confirmation email and show confirmation on page
-    if event.get('id'):
-        session['apptID'] = event['id']
-        try:
-            confirmationEmail()
-            return jsonify(apptID=session['apptID'])
-        except Exception as e:
-            current_app.logger.error(e)
-            return jsonify(apptID=session['apptID'], emailError="Error while sending email.")
-    else:
-        return jsonify(error="Error while creating appointment event.")
-
-
 @bp.route('/booked', methods=['GET'])
 def booked():
     """
-    When the user has confirmed their appointment selection, serve this page
+    Serve the 'booked' page for a new booking
     """
-    return render_template('site/booked.html', apptDate=session['apptDate'], apptTime=session['apptTime'])
+    # session variable has apptDT, apptDate, apptTime, clientName, clientEmail from 'book', 'booking', 'fetchAppt'
+    return render_template('site/booked.html')
 
 
 @bp.route('/booked/<apptID>', methods=['GET'])
-def changeAppt(apptID):
+def bookedAppt(apptID=None):
     """
-    Allow a user to change or cancel their appointment
+    Serve the 'booked' page for a pre-existing appointment
     """
-    # *** This functionality needs writing *** #
-    return redirect(url_for('site.index'))
+    # session variable has apptDT, apptDate, apptTime, clientName, clientEmail from 'book', 'booking', 'fetchAppt'
+    return render_template('site/booked.html', apptID=apptID)
+
+
+@bp.route('/cancel', methods=['GET'])
+def cancel():
+    """
+    Serve the 'cancel' page 
+    """
+    return render_template('site/cancel.html')
+
+
+@bp.route('/rescheduleStart', methods=['GET'])
+def rescheduleStart():
+    """
+    Serve the 'reschedule' page 
+    """
+    session['reschedule'] = True
+    # Save these in case I need them? ***
+    session['oldDT'] = session['apptDT']
+    session['oldDate'] = session['apptDate']
+    session['oldTime'] = session['apptTime']
+    return redirect(url_for('site.book'))
+
+
+@bp.route('/reschedule', methods=['GET'])
+def reschedule():
+    session.pop('reschedule', None) # cleanup
+    return render_template('site/reschedule.html')
+

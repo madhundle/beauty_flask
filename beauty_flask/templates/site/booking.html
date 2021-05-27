@@ -12,18 +12,19 @@ content_header, flashed messages, and content are in
 
 {% block content %}
 <div class="d-flex flex-column align-items-center fadeInNoDelay">
-  <a class="btn btn-gold" href={{ url_for('site.book') }}><i class="bi-arrow-left"></i>&nbsp;&nbsp;Change Selection</a>
 
   <div class="card text-center bg-light col-lg-4 col-md-6 col-sm-10">
     <img class="card-img-top" src="{{ url_for('static', filename="images/makeup2.jpg") }}" alt="makeup">
     <div class="card-body">
       <h3 class="card-title">Custom Makeup Session</h3>
-      <h4 class="card-title">{{ apptDate }}</h4>
-      <h4 class="card-title">{{ apptTime.start }} &ndash; {{ apptTime.end }}</h4>
+      <h4 class="card-title">{{ session['apptDate'] }}</h4>
+      <h4 class="card-title">{{ session['apptTime'].start }} &ndash; {{ session['apptTime'].end }}</h4>
     </div>
   </div>
 
+
   <form method="POST" class="text-center">
+  {% if session['reschedule'] is not defined %} {# Get name and email for a new booking #}
     <div class="d-flex row justify-items-around align-items-center">
       <div class="col">
         <p><label for="clientName">Your Name:&nbsp;&nbsp;&nbsp;</label></p>
@@ -34,7 +35,9 @@ content_header, flashed messages, and content are in
         <p><input id="clientEmail" name="clientEmail" type="email" placeholder="youremail@address.com" required></p>
       </div>
     </div>
-    <button class="btn btn-gold" type="submit">Confirm Appointment&nbsp;&nbsp;<i class="bi-arrow-right"></i></button>
+  {% endif %} {# For new or rescheduling bookings, provide buttons #}
+    <a class="btn btn-gold mx-1" href={{ url_for('site.book') }}><i class="bi-arrow-left"></i>&nbsp;&nbsp;Change Selection</a>
+    <button class="btn btn-gold mx-1" type="submit">Confirm Appointment&nbsp;&nbsp;<i class="bi-arrow-right"></i></button>
   </form>
 
 </div>

@@ -30,6 +30,10 @@ a:hover {
     padding: 0.5rem 0.5rem; /* bootstrap default 1rem 1rem is a little big */
 }
 
+.alert p {
+    margin-bottom: 0;
+}
+
 /* Custom Carousel Captions per Window Size */
 
 @media (min-width: 768px) { /* media-breakpoint-up(md) */
@@ -191,6 +195,10 @@ td.disabled {
     color: inherit;
     padding: 0;
     border: none;
+}
+
+i {
+    vertical-align:middle;
 }
 
 .bi {
