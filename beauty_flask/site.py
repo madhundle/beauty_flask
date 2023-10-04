@@ -51,7 +51,7 @@ def contactEmail(name, email, message):
     msg.html += "<p style=\"white-space:pre-wrap;\">Message:&nbsp;&nbsp;<br>" + message + "</p>"
     mail.send(msg)
     return
- 
+
 
 #--------------------------------------------------------------------------------------------------#
 #                                          Contact Views                                           #
@@ -67,7 +67,7 @@ def contactPost():
 #        session['sent'] = True
         flash("Email sent!", 'alert-success')
     except Exception as e:
-        current_app.logger.debug("Error while sending contact email")   
+        current_app.logger.debug("Error while sending contact email")
         current_app.logger.error(e)
 #        session['sent'] = False
         flash("Email failed to send. Please try again soon.", 'alert-danger')
@@ -108,7 +108,7 @@ def connectToCalendar():
     if os.path.exists(SVC_ACCT_FILE):
         creds = service_account.Credentials.from_service_account_file(SVC_ACCT_FILE, scopes = SCOPES)
     return build('calendar', 'v3', credentials=creds)
-    
+
 
 def getCalendarTimezone(service):
     cal = service.calendars().get(calendarId=CAL_ID).execute()
@@ -123,7 +123,7 @@ def getEventsForWeek(service, start):
     """
     endDate = (start + timedelta(days=6-int(start.strftime('%w')))).date()
     end=datetime(endDate.year,endDate.month,endDate.day,23,59,59,999999,tz.gettz('America/Chicago'))
-    events_result = service.events().list(calendarId=CAL_ID, orderBy='startTime', singleEvents=True, 
+    events_result = service.events().list(calendarId=CAL_ID, orderBy='startTime', singleEvents=True,
                                           timeMin=start.isoformat(), timeMax=end.isoformat()).execute()
 
     return [(e['start']['dateTime'],e['end']['dateTime']) for e in events_result['items']]
@@ -134,14 +134,14 @@ def getOpeningsForWeek(service):
     From a start datetime through the end of that week, compare availability versus event conflicts
     from the calendar
     Returns that week's basic information and a dictionary of openings per day
-    The start datetime is either the current datetime or the very beginning of a future week, 
+    The start datetime is either the current datetime or the very beginning of a future week,
     depending on the session 'offset' variable
     """
     # Create the week's info
-    week = {d:[] for d in DAYS} # will store {'day': ['Mon', 'dd']} e.g. {'Sun': ['May', '09']}
+    week = {d:[] for d in DAYS} # will store {'day': ['Mon', 'dd', 'yyyy']} e.g. {'Sun': ['May', '09', '2021']}
     tzInfo = tz.gettz(session['tzName']) # the tzinfo type of timezone information for use with datetime
 
-    now = datetime.now(tzInfo) 
+    now = datetime.now(tzInfo)
 #    if session.get('offset') is None:
 #        flash("Unexpected error while trying to get available sessions")
     if session['offset'] == 0: # this week
@@ -154,13 +154,13 @@ def getOpeningsForWeek(service):
     ## process days from baseDateTime back through beginning of week
     for i in range(baseDateTimew, -1, -1):
         currday = baseDateTime - timedelta(days=baseDateTimew-i)
-        week[currday.strftime('%a')] = currday.strftime('%b %d').split()
+        week[currday.strftime('%a')] = currday.strftime('%b %d %Y').split()
 
     ## process days after baseDateTime through end of week
     for i in range(baseDateTimew + 1, 7):
         currday = baseDateTime + timedelta(days=i-baseDateTimew)
-        week[currday.strftime('%a')] = currday.strftime('%b %d').split()
-        
+        week[currday.strftime('%a')] = currday.strftime('%b %d %Y').split()
+
     # Populate the week's openings
     ## get basic availability
     avail = {d:{t:False for t in TIMEBLOCKS} for d in DAYS} # initialize empty schedule
@@ -182,7 +182,7 @@ def getOpeningsForWeek(service):
         currDate = (baseDateTime + timedelta(days=i-baseDateTimew)).date()
         openings[currDate.strftime('%a')] = [] # initialize
         for tb in TIMEBLOCKS: # for each timeblock
-            currDateTime = datetime(currDate.year, currDate.month, currDate.day, 
+            currDateTime = datetime(currDate.year, currDate.month, currDate.day,
                                     int(tb[:2]), int(tb[2:]), 00, 000000, tzInfo)
             cDTEnd = currDateTime+BOOKING_LEN # ensure the length of a booking is free
 
@@ -270,7 +270,7 @@ def fetchOpenings():
     """
     # Connect to calendar or fail gracefully (directing user to Contact Me page)
     ## Get service from cache, or renew
-    service = cache.get("service") 
+    service = cache.get("service")
     if service is None: # service not created yet or is expired
         try:
             service = connectToCalendar()
@@ -299,9 +299,9 @@ def fetchOpenings():
         ltz = datetime.now().astimezone().strftime('%Z')
         if ltz in tzStrs and tzName == 'America/Chicago':
             session['tzStr'] = tzStrs[ltz]
-        else: 
+        else:
             session['tzStr'] = "the " + tzName + " timezone"
-    
+
     # Get offset from session
     offset = session.get('offset')
     ## Default to 0 if this fails
@@ -329,6 +329,9 @@ def fetchOpenings():
 #     g.error = False
 #    week = {'Sun': ['May', '09'], 'Mon': ['May', '10'], 'Tue': ['May', '11'], 'Wed': ['May', '12'], 'Thu': ['May', '13'], 'Fri': ['May', '14'], 'Sat': ['May', '15']}
 #    openings = {'Sun': ['1700', '1900', '1930', '2000'], 'Mon': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Tue': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Wed': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Thu': ['1700', '1730', '1800', '1830', '1900', '1930', '2000'], 'Fri': ['1830', '1900', '1930', '2000'], 'Sat': ['0900', '0930', '1000', '1030', '1400', '1430', '1500', '1530', '1600', '1630', '1700', '1730', '1800', '1830', '1900', '1930', '2000']}
+## I am changing these to:
+## week = {'Sun': ['May', '09', '2021'], 'Mon': ['May', '10', '2021']}
+## ... etc. with the year as part of the data
 
     return jsonify(week=week, openings=openings)
 
@@ -342,7 +345,7 @@ def fetchAppt(apptID=None):
     Or if an appointment ID is provided, just fetch that information
     """
     # Get the service to connect to calendar
-    service = cache.get("service") 
+    service = cache.get("service")
     if service is None: # service not created yet or is expired
         try:
             service = connectToCalendar()
@@ -364,7 +367,7 @@ def fetchAppt(apptID=None):
         eventEnd = datetime.fromisoformat(event['end']['dateTime'])
         current_app.logger.debug("Got event start: {}".format(eventStart))
         current_app.logger.debug("Got event end: {}".format(eventEnd))
-    
+
         ## Craft human-friendly appointment date and times
         dStr = {1: 'st', 2: 'nd', 3: 'rd', 4: 'th', 5: 'th', 6: 'th', 7: 'th', 8: 'th', 9: 'th', 0: 'th'}
         apptDate = eventStart.strftime("%A, %B %d") + dStr[int(eventStart.strftime("%d")[1])]
@@ -380,7 +383,7 @@ def fetchAppt(apptID=None):
 #        session['clientName'] = event['description'].split(';')[0].replace('Session with ','')
 #        session['clientEmail'] = event['description'].split(';')[1].lstrip()
         session.modified = True # be sure to catch apptTime dict modification
-    
+
         ## Return the info or an error message
         if event:
             return jsonify(apptDate=apptDate, apptTime=apptTime)
@@ -426,7 +429,7 @@ def fetchCancel(apptID):
     Cancels an appointment given the ID
     """
     # Get the service to connect to calendar
-    service = cache.get("service") 
+    service = cache.get("service")
     if service is None: # service not created yet or is expired
         try:
             service = connectToCalendar()
@@ -452,13 +455,13 @@ def fetchCancel(apptID):
         cancelEmail()
         return jsonify(success=True)
     except Exception as e:
-        return jsonify(emailError="Sorry, there was an error while sending your confirmation email.")        
+        return jsonify(emailError="Sorry, there was an error while sending your confirmation email.")
 
 
 @bp.route('/reschedule/<apptID>', methods=['GET'])
 def fetchReschedule(apptID):
     # Get the service to connect to calendar
-    service = cache.get("service") 
+    service = cache.get("service")
     if service is None: # service not created yet or is expired
         try:
             service = connectToCalendar()
@@ -519,7 +522,7 @@ def bookPost():
         apptDT = datetime.strptime("{}_{}_{}".format('2021', appt, '00'), '%Y_%b_%d_%H%M_%S')
         session['apptDT'] = apptDT # save to session
         return redirect(url_for('site.booking'))
-    
+
     # 'POST' was to scroll through the schedule
     ## Update the offset based on 'POST', then redirect to base page
     if session.get('offset') is None:
@@ -550,7 +553,7 @@ def booking():
     dStr = {1: 'st', 2: 'nd', 3: 'rd', 4: 'th', 5: 'th', 6: 'th', 7: 'th', 8: 'th', 9: 'th', 0: 'th'}
     apptDate = apptDT.strftime("%A, %B %d") + dStr[int(apptDT.strftime("%d")[1])]
     apptTime = {'start' : apptDT.strftime("%I:%M").lstrip('0')+apptDT.strftime("%p").lower(),
-                'end': (apptDT + BOOKING_LEN).strftime("%I:%M").lstrip('0') + 
+                'end': (apptDT + BOOKING_LEN).strftime("%I:%M").lstrip('0') +
                        (apptDT + BOOKING_LEN).strftime("%p").lower()}
     session['apptDate'] = apptDate
     session['apptTime'] = apptTime
@@ -595,7 +598,7 @@ def bookedAppt(apptID=None):
 @bp.route('/cancel', methods=['GET'])
 def cancel():
     """
-    Serve the 'cancel' page 
+    Serve the 'cancel' page
     """
     return render_template('site/cancel.html')
 
@@ -603,7 +606,7 @@ def cancel():
 @bp.route('/rescheduleStart', methods=['GET'])
 def rescheduleStart():
     """
-    Serve the 'reschedule' page 
+    Serve the 'reschedule' page
     """
     session['reschedule'] = True
     # Save these in case I need them? ***
@@ -617,4 +620,3 @@ def rescheduleStart():
 def reschedule():
     session.pop('reschedule', None) # cleanup
     return render_template('site/reschedule.html')
-
